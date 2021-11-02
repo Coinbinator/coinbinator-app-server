@@ -4,7 +4,6 @@ import { register_singleton, value } from "./utils/helpers";
 import { App } from "./bootstrap/app";
 
 value(async () => {
-	const app_repository = register_singleton(App, new App());
-
-	app_repository.run();
+	const app = register_singleton(App, new App());
+	app.run();
 });
