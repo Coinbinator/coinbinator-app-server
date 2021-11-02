@@ -1,0 +1,12 @@
+/node_modules
+/.dockers-data
+.env
+.env.backup
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.idea
+/.vscode
+/nbproject/private
