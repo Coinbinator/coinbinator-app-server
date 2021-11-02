@@ -4,64 +4,10 @@ import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws"
 import { app, loop, value } from "../utils/helpers";
 import { CoinbinatorExchange } from "../utils/types";
 
-export class ExchangeMercadoBitcoinRepository {
-	constructor() {}
-
-	async init() {
-		this.update_pair_prices();
-		loop(60000 / (supported_pairs.length / 1000), this.update_pair_prices.bind(this));
-	}
-
-	async update_pair_prices() {
-		const tickers = await Promise.all(
-			supported_pairs.map((pair) => {
-				const symbol = pair.split("/")[0];
-				return this.tapi_ticker(symbol);
-			})
-		);
-
-		for (const ticker of tickers) {
-			if (ticker === void 0) continue;
-
-			app().update_ticker({
-				exchange: CoinbinatorExchange.MERCADO_BITCOIN,
-				pair: ticker.pair,
-				price: ticker.last,
-			});
-		}
-	}
-
-	private async tapi(uri: string): Promise<any> {
-		uri = (uri || "").replace(/^\/+/, "");
-
-		return Axios.get(`https://www.mercadobitcoin.net/api/${uri}`);
-	}
-
-	private async tapi_ticker(symbol: string): Promise<Tapi_Ticker> {
-		return this.tapi(`/${symbol}/ticker/`)
-			.then(
-				(response) =>
-					({
-						pair: `${symbol}/BRL`,
-						...(response?.data?.ticker || {}),
-					} as Tapi_Ticker)
-			)
-			.catch((x) => void 0) as Promise<Tapi_Ticker>;
-	}
-}
-
-type Tapi_Ticker = {
-	pair: string;
-	high: string;
-	low: string;
-	vol: string;
-	last: string;
-	buy: string;
-	sell: string;
-	open: string;
-	date: number;
-};
-
+/**
+ * Which pairs we should consider,
+ * as the API dosen't support websockets and has a limited number of requests.
+ */
 const supported_pairs = [
 	"AAVE/BRL",
 	"BCH/BRL",
@@ -140,3 +86,61 @@ const supported_pairs = [
 	// "YFI/BRL",
 	// "ZRX/BRL",
 ];
+
+export class ExchangeMercadoBitcoinRepository {
+	constructor() {}
+
+	async init() {
+		this.update_pair_prices();
+		loop(60000 / (supported_pairs.length / 1000), this.update_pair_prices.bind(this));
+	}
+
+	async update_pair_prices() {
+		const tickers = await Promise.all(
+			supported_pairs.map((pair) => {
+				const symbol = pair.split("/")[0];
+				return this.tapi_ticker(symbol);
+			})
+		);
+
+		for (const ticker of tickers) {
+			if (ticker === void 0) continue;
+
+			app().update_ticker({
+				exchange: CoinbinatorExchange.MERCADO_BITCOIN,
+				pair: ticker.pair,
+				price: ticker.last,
+			});
+		}
+	}
+
+	private async tapi(uri: string): Promise<any> {
+		uri = (uri || "").replace(/^\/+/, "");
+
+		return Axios.get(`https://www.mercadobitcoin.net/api/${uri}`);
+	}
+
+	private async tapi_ticker(symbol: string): Promise<Tapi__Ticker> {
+		return this.tapi(`/${symbol}/ticker/`)
+			.then(
+				(response) =>
+					({
+						pair: `${symbol}/BRL`,
+						...(response?.data?.ticker || {}),
+					} as Tapi__Ticker)
+			)
+			.catch((x) => void 0) as Promise<Tapi__Ticker>;
+	}
+}
+
+type Tapi__Ticker = {
+	pair: string;
+	high: string;
+	low: string;
+	vol: string;
+	last: string;
+	buy: string;
+	sell: string;
+	open: string;
+	date: number;
+};

@@ -10,11 +10,12 @@ type SymbolTicker = { type: "SymbolTicker"; symbol: string; last: number };
 export enum CoinbinatorExchange {
 	GENERIC = "GENERIC",
 	BINANCE = "BINANCE",
+	GATEIO = "GATEIO",
 	MERCADO_BITCOIN = "MERCADO_BITCOIN",
 }
 
 export type CoinbinatorTicker = {
-	n?:number;
+	n?: number;
 	exchange: CoinbinatorExchange;
 	pair: string;
 	price: string;

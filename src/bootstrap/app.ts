@@ -1,17 +1,16 @@
-import { loop, uuid, value } from "../utils/helpers";
-import * as WebSocket from "ws";
-import { Command } from "commander";
+import { loop } from "../utils/helpers";
 import { CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
 import { ExchangeBinanceRepository } from "../repositories/exchange_binance_repository";
-import express from "express";
-import { WithWebsocketMethod } from "express-ws";
 import { ExchangeMercadoBitcoinRepository } from "../repositories/exchange_mercadobitcoin_repository";
+import WebserverRepository from "../repositories/webserver_repository";
 // import WebserverRepository from "../repositories/WebserverRepository";
 
 /**
  * TODO: renomear para "AppRepository" ou somente "App"
  */
 export class App {
+	private _i: number = 1;
+
 	/**
 	 * Tickers grupped by exchange
 	 */
@@ -30,22 +29,31 @@ export class App {
 	/**
 	 * Websockets connected to the app
 	 */
-	private client_sockets: Set<any> = new Set();
-
+	private client_websockets: Set<any> = new Set();
 
 	private subscribers: Map<string, Set<any>> = new Map();
 
 	// private cli_program: SocketCliProgram = new SocketCliProgram(this);
 
+	/**
+	 * [Binance] repository
+	 */
 	private exchange_binance: ExchangeBinanceRepository;
 
+	/**
+	 * [Mercado Bitcoin] repository
+	 */
 	private exchange_mercadobitcoin: ExchangeMercadoBitcoinRepository;
 
-	// private webserver: WebserverRepository;
+	/**
+	 * [Webserver] repository
+	 */
+	private webserver: WebserverRepository;
 
 	constructor() {
 		this.exchange_binance = new ExchangeBinanceRepository();
 		this.exchange_mercadobitcoin = new ExchangeMercadoBitcoinRepository();
+		this.webserver = new WebserverRepository();
 	}
 
 	async run() {
@@ -56,7 +64,8 @@ export class App {
 		this.exchange_mercadobitcoin.init();
 
 		loop(5000, this.dispatch_dirty_tickers.bind(this));
-		// this.webserver.initialize();
+
+		this.webserver.init();
 	}
 
 	// register_socket(socket: WebSocketPlus) {
@@ -148,15 +157,20 @@ export class App {
 	// 	socket.send(the_message);
 	// }
 
-	private get_subscriber_channel(channel: string, create: boolean = false) {
+	get_subscriber_channel(channel: string, create: boolean = false) {
 		if (!this.subscribers.has(channel)) {
 			this.subscribers.set(channel, new Set());
 		}
 		return this.subscribers.get(channel);
 	}
 
-	_i: number = 1;
-
+	/**
+	 * Returns a application ticker instance or creates a new one
+	 *
+	 * @param exchange
+	 * @param pair
+	 * @returns
+	 */
 	find_or_create_ticker(exchange: CoinbinatorExchange, pair: string): CoinbinatorTicker {
 		if (this.tickers?.get(exchange)?.has(pair) === true) {
 			return this.tickers?.get(exchange)?.get(pair) as any as CoinbinatorTicker;
@@ -179,6 +193,11 @@ export class App {
 		return ticker;
 	}
 
+	/**
+	 * Updates the application ticker state
+	 *
+	 * @param ticker
+	 */
 	update_ticker(ticker: CoinbinatorTicker) {
 		const generic_ticker = this.find_or_create_ticker(CoinbinatorExchange.GENERIC, ticker.pair);
 		const exchange_ticker = this.find_or_create_ticker(ticker.exchange, ticker.pair);
@@ -188,10 +207,11 @@ export class App {
 
 		this.tickers_dirty.add(generic_ticker);
 		this.tickers_dirty.add(exchange_ticker);
-
-		console.log(this.tickers_dirty.size);
 	}
 
+	/**
+	 * Dispatches dirty tickers to subscribers
+	 */
 	dispatch_dirty_tickers() {
 		this.tickers_dirty.clear();
 	}

@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { ExchangeBinanceRepository } from "./exchange_binance_repository";
 import express from "express";
 import { WithWebsocketMethod } from "express-ws";
+import * as ws from "ws";
 
 export default class WebserverRepository {
 	express: express.Express & WithWebsocketMethod;
@@ -27,20 +28,19 @@ export default class WebserverRepository {
 			res.end();
 		});
 
-		this.express.ws("/echo", (ws, req) => {
-			app().register_socket(ws as WebSocketPlus);
-
+		this.express.ws("/echo", (ws: ws, req) => {
+			// app().register_socket(ws as WebSocketPlus);
 			// ws.on("message", function (msg) {
 			// 	console.log(msg);
 			// 	ws.send("ok");
 			// });
-
 			// console.log("socket", (req as any).testing);
 		});
 	}
 
-	initialize() {
-		this.express.listen(8000);
-		console.log("Running...");
+	init() {
+		const port = 8000;
+		this.express.listen(port);
+		console.log(`Webserver running of port (${port})...`);
 	}
 }

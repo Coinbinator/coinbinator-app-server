@@ -68,7 +68,7 @@ export class ExchangeBinanceRepository {
 		}
 	}
 
-	private handle_ws_24hr_mini_ticker(message: Ws__24hrMiniTicker) {
+	private handle_ws_24hr_mini_ticker(message: WS__24hrMiniTicker) {
 		const pair = this.norm_pair(message.s);
 
 		if (pair === void 0) return;
@@ -115,7 +115,7 @@ export class ExchangeBinanceRepository {
 	// }
 }
 
-type Ws__24hrMiniTicker = {
+type WS__24hrMiniTicker = {
 	e: "24hrMiniTicker";
 	E: number;
 	s: string;
