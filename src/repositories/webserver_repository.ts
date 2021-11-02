@@ -30,10 +30,10 @@ export default class WebserverRepository {
 
 		this.express.ws("/echo", (ws: ws, req) => {
 			// app().register_socket(ws as WebSocketPlus);
-			// ws.on("message", function (msg) {
-			// 	console.log(msg);
-			// 	ws.send("ok");
-			// });
+			ws.on("message", function (msg) {
+				console.log(msg);
+				ws.send("ok");
+			});
 			// console.log("socket", (req as any).testing);
 		});
 	}
