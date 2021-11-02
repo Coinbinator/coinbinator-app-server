@@ -1,5 +1,3 @@
-import express from "express";
-import { WithWebsocketMethod } from "express-ws";
 import { register_singleton, value } from "./utils/helpers";
 import { App } from "./bootstrap/app";
 
