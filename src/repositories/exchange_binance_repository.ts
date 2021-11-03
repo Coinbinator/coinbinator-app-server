@@ -1,6 +1,7 @@
 import Binance from "node-binance-api";
 import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
 import { app, value } from "../utils/helpers";
+import { norm_ticker_channel } from "../utils/parsers";
 import { CoinbinatorExchange } from "../utils/types";
 
 export class ExchangeBinanceRepository {
@@ -29,7 +30,11 @@ export class ExchangeBinanceRepository {
 			const symbols = info.symbols;
 
 			for (const symbol_info of symbols) {
-				this.pair_map.set(`${symbol_info.symbol}`, `${symbol_info.baseAsset}_${symbol_info.quoteAsset}`);
+				this.pair_map.set(
+					//
+					`${symbol_info.symbol}`,
+					`${symbol_info.baseAsset}_${symbol_info.quoteAsset}`.toLocaleUpperCase()
+				);
 			}
 		} catch (err) {}
 	}
@@ -75,6 +80,7 @@ export class ExchangeBinanceRepository {
 
 		app().update_ticker({
 			exchange: CoinbinatorExchange.BINANCE,
+			id: `${pair}@${CoinbinatorExchange.BINANCE}`,
 			pair: pair,
 			price: message.c,
 		});

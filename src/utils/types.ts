@@ -1,11 +1,7 @@
-import { countReset } from "console";
 import * as WebSocket from "ws";
-
-type SetSocketId = { type: "SetSocketId"; id: string };
-type MySubscriptions = { type: "MySubscriptions" };
-type SubscribeToSymbol = { type: "SubscribeToSymbol"; symbol: string };
-type UnsubscribeToSymbol = { type: "UnsubscribeToSymbol"; symbol: string };
-type SymbolTicker = { type: "SymbolTicker"; symbol: string; last: number };
+import MySubscriptionsAction from "../bootstrap/actions/my_subscriptions_action";
+import SubscribeToTickerAction from "../bootstrap/actions/subscribe_to_ticker_action";
+import UnsubscribeToTickerAction from "../bootstrap/actions/unsubscribe_to_ticker_action";
 
 export enum CoinbinatorExchange {
 	GENERIC = "GENERIC",
@@ -16,7 +12,19 @@ export enum CoinbinatorExchange {
 
 export type CoinbinatorTicker = {
 	n?: number;
+	id: string;
 	exchange: CoinbinatorExchange;
 	pair: string;
 	price: string;
+};
+
+export type CoinbinatorDecoratedWebSocket = WebSocket & {
+	session_id?: string;
+	subscriptions?: Set<string>;
+};
+
+export type ApplicationActions = {
+	my_subscriptions: MySubscriptionsAction;
+	subscribe_to_ticker: SubscribeToTickerAction;
+	unsubscribe_to_ticker: UnsubscribeToTickerAction;
 };

@@ -108,6 +108,7 @@ export class ExchangeMercadoBitcoinRepository {
 
 			app().update_ticker({
 				exchange: CoinbinatorExchange.MERCADO_BITCOIN,
+				id: `${ticker.pair}@${CoinbinatorExchange.MERCADO_BITCOIN}`,
 				pair: ticker.pair,
 				price: ticker.last,
 			});

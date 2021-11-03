@@ -1,10 +1,8 @@
-import { app, uuid, value } from "../utils/helpers";
-import * as WebSocket from "ws";
-import { Command } from "commander";
-import { ExchangeBinanceRepository } from "./exchange_binance_repository";
+import { app } from "../utils/helpers";
 import express from "express";
 import { WithWebsocketMethod } from "express-ws";
 import * as ws from "ws";
+import { CoinbinatorDecoratedWebSocket } from "../utils/types";
 
 export default class WebserverRepository {
 	express: express.Express & WithWebsocketMethod;
@@ -29,7 +27,8 @@ export default class WebserverRepository {
 		});
 
 		this.express.ws("/echo", (ws: ws, req) => {
-			// app().register_socket(ws as WebSocketPlus);
+			app().register_client_websocket(ws as CoinbinatorDecoratedWebSocket);
+
 			ws.on("message", function (msg) {
 				console.log(msg);
 				ws.send("ok");
