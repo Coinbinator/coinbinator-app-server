@@ -92,6 +92,8 @@ export class ExchangeMercadoBitcoinRepository {
 
 	async init() {
 		this.update_pair_prices();
+
+		//NOTE: loop fixed interval to avoid api limits
 		loop(60000 / (supported_pairs.length / 1000), this.update_pair_prices.bind(this));
 	}
 

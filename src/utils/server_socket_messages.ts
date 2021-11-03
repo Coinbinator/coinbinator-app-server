@@ -1,11 +1,19 @@
 import { CoinbinatorTicker } from "./types";
 
-export enum SocketServerMessageType {
+export enum ServerMessageType {
 	SUBSCRIPTIONS = "Subscriptions",
 	TICKERS = "Tickers",
 }
-export type SocketServerMessage = { type: SocketServerMessageType };
+export type ServerMessage = SubscriptionsServerMessage | TickersServerMessage;
 
-export type SubscriptionsServerMessage = SocketServerMessage & { type: SocketServerMessageType.SUBSCRIPTIONS; subscriptions: string[] };
+export type SubscriptionsServerMessage = {
+	//
+	type: ServerMessageType.SUBSCRIPTIONS;
+	subscriptions: string[];
+};
 
-export type TickersServerMessage = SocketServerMessage & { type: SocketServerMessageType.TICKERS; tickers: CoinbinatorTicker[] };
+export type TickersServerMessage = {
+	//
+	type: ServerMessageType.TICKERS;
+	tickers: CoinbinatorTicker[];
+};

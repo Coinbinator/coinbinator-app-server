@@ -3,11 +3,44 @@ export enum SocketClientMessageType {
 	SET_SOCKET_ID = "SetSocketId",
 	SYMBOL_TICKER = "SymbolTicker",
 	SUBSCRIBE_TO_TICKER = "SubscribeToTicker",
+	SUBSCRIBE_TO_TICKERS = "SubscribeToTickers",
 	UNSUBSCRIBE_TO_TICKER = "UnsubscribeToTicker",
 }
-export type SocketClientMessage = { type: SocketClientMessageType };
-export type SetSocketIdClientMessage = SocketClientMessage & { type: SocketClientMessageType.SET_SOCKET_ID; id: string };
-export type MySubscriptionsClientMessage = SocketClientMessage & { type: SocketClientMessageType.MY_SUBSCRIPTIONS };
-export type SubscribeToTickerClientMessage = SocketClientMessage & { type: SocketClientMessageType.SUBSCRIBE_TO_TICKER; ticker: string };
-export type UnsubscribeToTickerClientMessage = SocketClientMessage & { type: SocketClientMessageType.UNSUBSCRIBE_TO_TICKER; ticker: string };
-export type SymbolTickerClientMessage = SocketClientMessage & { type: SocketClientMessageType.SYMBOL_TICKER; symbol: string; last: number };
+
+export type ClientMessage = SetSocketIdClientMessage | MySubscriptionsClientMessage | SubscribeToTickerClientMessage | SubscribeToTickersClientMessage | UnsubscribeToTickerClientMessage | SymbolTickerClientMessage;
+
+export type SetSocketIdClientMessage = {
+	//
+	type: SocketClientMessageType.SET_SOCKET_ID;
+	id: string;
+};
+
+export type MySubscriptionsClientMessage = {
+	//
+	type: SocketClientMessageType.MY_SUBSCRIPTIONS;
+};
+
+export type SubscribeToTickerClientMessage = {
+	//
+	type: SocketClientMessageType.SUBSCRIBE_TO_TICKER;
+	ticker: string;
+};
+
+export type SubscribeToTickersClientMessage = {
+	//
+	type: SocketClientMessageType.SUBSCRIBE_TO_TICKERS;
+	tickers: string[];
+};
+
+export type UnsubscribeToTickerClientMessage = {
+	//
+	type: SocketClientMessageType.UNSUBSCRIBE_TO_TICKER;
+	ticker: string;
+};
+
+export type SymbolTickerClientMessage = {
+	//
+	type: SocketClientMessageType.SYMBOL_TICKER;
+	symbol: string;
+	last: number;
+};

@@ -1,6 +1,6 @@
 import Binance from "node-binance-api";
 import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
-import { app, value } from "../utils/helpers";
+import { app, loop, value } from "../utils/helpers";
 import { norm_ticker_channel } from "../utils/parsers_and_normalizers";
 import { CoinbinatorExchange } from "../utils/types";
 
@@ -11,20 +11,19 @@ export class ExchangeBinanceRepository {
 
 	private pair_map: Map<string, string> = new Map();
 
-	// refresh_exchange_id?: NodeJS.Timer;
-	// refreshing_exchange: boolean = false;
-
 	constructor() {
 		this.binance = new Binance();
 	}
 
 	async init() {
-		this.refresh_info();
+		await this.refresh_exchange_info();
+
+		loop(60000, this.refresh_exchange_info.bind(this));
 
 		this.init_ws();
 	}
 
-	private async refresh_info() {
+	private async refresh_exchange_info() {
 		try {
 			const info = await this.binance.exchangeInfo();
 			const symbols = info.symbols;
@@ -33,8 +32,24 @@ export class ExchangeBinanceRepository {
 				this.pair_map.set(
 					//
 					`${symbol_info.symbol}`,
-					`${symbol_info.baseAsset}_${symbol_info.quoteAsset}`.toLocaleUpperCase()
+					`${symbol_info.baseAsset}/${symbol_info.quoteAsset}`.toLocaleUpperCase()
 				);
+			}
+
+			const prices = (await this.binance.prices()) as { [pro: string]: string };
+			for (const i in prices) {
+				const pair = this.pair_map.get(i);
+
+				if (typeof pair === "undefined") continue;
+
+				const price = prices[pair];
+
+				app().update_ticker({
+					exchange: CoinbinatorExchange.BINANCE,
+					id: `${pair}@${CoinbinatorExchange.BINANCE}`,
+					pair: pair,
+					price: price,
+				});
 			}
 		} catch (err) {}
 	}
