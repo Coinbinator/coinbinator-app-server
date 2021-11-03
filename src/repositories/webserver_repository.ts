@@ -1,5 +1,5 @@
 import { app } from "../utils/helpers";
-import express from "express";
+import express, { Request } from "express";
 import { WithWebsocketMethod } from "express-ws";
 import * as ws from "ws";
 import { CoinbinatorDecoratedWebSocket } from "../utils/types";
@@ -26,13 +26,13 @@ export default class WebserverRepository {
 			res.end();
 		});
 
-		this.express.ws("/echo", (ws: ws, req) => {
-			app().register_client_websocket(ws as CoinbinatorDecoratedWebSocket);
+		this.express.ws("/echo", (ws: ws, req: Request) => {
+			app().on_client_socket_connect(ws as CoinbinatorDecoratedWebSocket, req);
 
-			ws.on("message", function (msg) {
-				console.log(msg);
-				ws.send("ok");
-			});
+			// ws.on("message", function (msg) {
+			// 	console.log(msg);
+			// 	ws.send("ok");
+			// });
 			// console.log("socket", (req as any).testing);
 		});
 	}

@@ -3,82 +3,86 @@ import { ApplicationActions, CoinbinatorDecoratedWebSocket, CoinbinatorExchange,
 import { ExchangeBinanceRepository } from "../repositories/exchange_binance_repository";
 import { ExchangeMercadoBitcoinRepository } from "../repositories/exchange_mercadobitcoin_repository";
 import WebserverRepository from "../repositories/webserver_repository";
-import { WebSocket, Data as WsData } from "ws";
-import { MySubscriptionsClientMessage, SetSocketIdClientMessage, SocketClientMessage, SocketClientMessageType, SubscribeToTickerClientMessage, UnsubscribeToTickerClientMessage } from "../utils/client_socket_messages";
-import SubscribeToTickerAction from "./actions/subscribe_to_ticker_action";
-import UnsubscribeToTickerAction from "./actions/unsubscribe_to_ticker_action";
-import { norm_ticker_channel } from "../utils/parsers";
-import MySubscriptionsAction from "./actions/my_subscriptions_action";
-import { SocketServerMessageType, TickersServerMessage } from "../utils/server_socket_messages";
-// import WebserverRepository from "../repositories/WebserverRepository";
+import { Data as WsData } from "ws";
+import { MySubscriptionsClientMessage, SocketClientMessageType, SubscribeToTickerClientMessage, UnsubscribeToTickerClientMessage } from "../utils/client_socket_messages";
+import { norm_client_socket_messages } from "../utils/parsers_and_normalizers";
+import handle_client_message__my_subscriptions_action from "./actions/handle_client_message__my_subscriptions_action";
+import handle_client_message__subscribe_to_ticker_action from "./actions/handle_client_message__subscribe_to_ticker_action";
+import handle_client_message__unsubscribe_to_ticker_action from "./actions/handle_client_message__unsubscribe_to_ticker_action";
+import app__dispatch_dirty_tickers_action from "./actions/app__dispatch_dirty_tickers_action";
+import { Request } from "express";
 
-/**
- * TODO: renomear para "AppRepository" ou somente "App"
- */
 export class App {
 	private _i: number = 1;
 
 	/**
+	 * Application encapsuled actions
 	 */
-	private _actions: ApplicationActions;
-
-	/**
-	 */
-	public get actions(): ApplicationActions {
-		return this._actions;
-	}
+	readonly actions: ApplicationActions;
 
 	/**
 	 * Tickers grupped by exchange
 	 */
-	private tickers: Map<CoinbinatorExchange, Map<string, CoinbinatorTicker>> = new Map();
+	readonly tickers: Map<CoinbinatorExchange, Map<string, CoinbinatorTicker>> = new Map();
 
 	/**
 	 * All knowon/loaded tickers
 	 */
-	private tickers_all: Set<CoinbinatorTicker> = new Set();
+	readonly tickers_all: Set<CoinbinatorTicker> = new Set();
 
 	/**
 	 * Tickers that changed after last "app" ticker dispatch
 	 */
-	private tickers_dirty: Set<CoinbinatorTicker> = new Set();
+	readonly tickers_dirty: Set<CoinbinatorTicker> = new Set();
 
 	/**
 	 * Websockets connected to the app
 	 */
-	private client_websockets: Set<CoinbinatorDecoratedWebSocket> = new Set();
+	readonly clients_sockets: Set<CoinbinatorDecoratedWebSocket> = new Set();
 
-	private subscriptions: Map<string, Set<any>> = new Map();
+	/**
+	 * Subscriptions (by channel)
+	 */
+	readonly subscriptions_by_channel: Map<string, Set<CoinbinatorDecoratedWebSocket>> = new Map();
 
-	// private cli_program: SocketCliProgram = new SocketCliProgram(this);
+	/**
+	 * Subscriptions (by socket_client)
+	 */
+	readonly subscriptions_by_client: Map<CoinbinatorDecoratedWebSocket, Set<string>> = new Map();
 
 	/**
 	 * [Binance] repository
 	 */
-	private exchange_binance: ExchangeBinanceRepository;
+	readonly exchange_binance: ExchangeBinanceRepository;
 
 	/**
 	 * [Mercado Bitcoin] repository
 	 */
-	private exchange_mercadobitcoin: ExchangeMercadoBitcoinRepository;
+	readonly exchange_mercadobitcoin: ExchangeMercadoBitcoinRepository;
 
 	/**
 	 * [Webserver] repository
 	 */
-	private webserver: WebserverRepository;
+	readonly webserver: WebserverRepository;
 
+	/**
+	 */
 	constructor() {
 		this.exchange_binance = new ExchangeBinanceRepository();
 		this.exchange_mercadobitcoin = new ExchangeMercadoBitcoinRepository();
 		this.webserver = new WebserverRepository();
 
-		this._actions = {
-			my_subscriptions: new MySubscriptionsAction(),
-			subscribe_to_ticker: new SubscribeToTickerAction(),
-			unsubscribe_to_ticker: new UnsubscribeToTickerAction(),
+		this.actions = {
+			app__dispatch_dirty_tickers: app__dispatch_dirty_tickers_action,
+			handle_client_message__my_subscriptions: handle_client_message__my_subscriptions_action,
+			handle_client_message__subscribe_to_ticker: handle_client_message__subscribe_to_ticker_action,
+			handle_client_message__unsubscribe_to_ticker: handle_client_message__unsubscribe_to_ticker_action,
 		};
 	}
 
+	/**
+	 * Start application
+	 */
 	async run() {
 		//TODO: initialize databases
 		//TODO: initialize knowuw symbols/tickers
@@ -86,7 +90,7 @@ export class App {
 		this.exchange_binance.init();
 		this.exchange_mercadobitcoin.init();
 
-		loop(5000, this.dispatch_dirty_tickers.bind(this));
+		loop(5000, this.actions.app__dispatch_dirty_tickers);
 
 		this.webserver.init();
 	}
@@ -94,19 +98,23 @@ export class App {
 	/**
 	 * @param socket
 	 */
-	register_client_websocket(socket: CoinbinatorDecoratedWebSocket) {
+	on_client_socket_connect(socket: CoinbinatorDecoratedWebSocket, request: Request) {
 		socket.session_id = uuid();
-		socket.subscriptions = new Set();
+
 		socket.on("message", (message) => this.on_client_socket_message(socket, message));
 		socket.on("close", (code, reason) => this.on_client_socket_close(socket, code, reason));
 
-		this.client_websockets.add(socket);
-
-		// this.send_message(socket, { type: "SetSocketId", id: socket.id });
+		this.clients_sockets.add(socket);
+		this.subscriptions_by_client.set(socket, new Set());
 	}
 
-	private on_client_socket_message(socket: CoinbinatorDecoratedWebSocket, message: WsData) {
-		const normalized_messages = this.on_client_socket_message__normalize_messages(message);
+	/**
+	 * @param socket
+	 * @param message
+	 * @returns
+	 */
+	on_client_socket_message(socket: CoinbinatorDecoratedWebSocket, message: WsData) {
+		const normalized_messages = norm_client_socket_messages(message);
 		console.log("Message:");
 		console.log(message);
 		console.log(normalized_messages);
@@ -121,86 +129,40 @@ export class App {
 			}
 
 			if (normalized_message.type === SocketClientMessageType.MY_SUBSCRIPTIONS) {
-				this.actions.my_subscriptions.execute(socket, normalized_message as MySubscriptionsClientMessage);
+				this.actions.handle_client_message__my_subscriptions(socket, normalized_message as MySubscriptionsClientMessage);
 				return;
 			}
 
 			if (normalized_message.type === SocketClientMessageType.SUBSCRIBE_TO_TICKER) {
-				this.actions.subscribe_to_ticker.execute(socket, normalized_message as SubscribeToTickerClientMessage);
+				this.actions.handle_client_message__subscribe_to_ticker(socket, normalized_message as SubscribeToTickerClientMessage);
 				return;
 			}
 
 			if (normalized_message.type === SocketClientMessageType.UNSUBSCRIBE_TO_TICKER) {
-				this.actions.unsubscribe_to_ticker.execute(socket, normalized_message as UnsubscribeToTickerClientMessage);
+				this.actions.handle_client_message__unsubscribe_to_ticker(socket, normalized_message as UnsubscribeToTickerClientMessage);
 				return;
 			}
 		}
-
-		// normalized_messages.forEach((message) => {
-		// 	if (message.type === "MySubscriptions") {
-		// 		this.subscribers.forEach((value, channel) => {
-		// 			if (value.has(socket)) {
-		// 				this.send_message(socket, channel);
-		// 			}
-		// 		});
-		// 		return;
-		// 	}
-
-		// 	if (message.type === "SubscribeToSymbol") {
-		// 		this.get_subscriber_channel(message.symbol, true)?.add(socket);
-		// 		return;
-		// 	}
-
-		// 	if (message.type === "UnsubscribeToSymbol") {
-		// 		this.get_subscriber_channel(message.symbol, false)?.delete(socket);
-		// 		return;
-		// 	}
-		// });
 	}
 
-	private on_client_socket_close(socket: CoinbinatorDecoratedWebSocket, code: number, reason: Buffer | string) {
-		socket.off("message", this.on_client_socket_message);
-		socket.off("close", this.on_client_socket_close);
-
-		this.client_websockets.delete(socket);
-
-		this.subscriptions.forEach((value) => {
-			value.delete(socket);
-		});
+	/**
+	 * @param socket
+	 * @param code
+	 * @param reason
+	 */
+	on_client_socket_close(socket: CoinbinatorDecoratedWebSocket, code: number, reason: Buffer | string) {
+		// NOTE: cleaning up socket references
+		this.subscriptions_by_client.delete(socket);
+		this.subscriptions_by_channel.forEach((value) => value.delete(socket));
+		this.clients_sockets.delete(socket);
 	}
 
-	private on_client_socket_message__normalize_messages(message: WsData): SocketClientMessage[] {
-		let pre_messages: any = message;
-		let messages: SocketClientMessage[] = [];
-
-		if (typeof pre_messages === "string") {
-			try {
-				pre_messages = JSON.parse(pre_messages);
-			} catch (err) {}
-		}
-
-		if (!Array.isArray(pre_messages)) {
-			pre_messages = [pre_messages];
-		}
-
-		for (const pre_message of pre_messages) {
-			if (typeof pre_message === "string") {
-				// messages = messages.concat(this.cli_program.parse(pre_message));
-				continue;
-			}
-
-			if (typeof pre_message === "object") {
-				messages.push(pre_message as any as SocketClientMessage);
-				continue;
-			}
-
-			console.warn("unable to normalize message", pre_message);
-		}
-
-		return messages;
-	}
-
-	send_message(socket: CoinbinatorDecoratedWebSocket, message: unknown) {
+	/**
+	 * @param socket
+	 * @param message
+	 * @returns
+	 */
+	socket_send_message(socket: CoinbinatorDecoratedWebSocket, message: unknown) {
 		const the_message = value(() => {
 			if (typeof message === "undefined") return void 0;
 			if (typeof message === "string") return message;
@@ -208,18 +170,31 @@ export class App {
 			return JSON.stringify(message);
 		});
 
-		console.log("sending...", message, the_message);
+		// console.log("sending...", message, the_message);
 
 		if (typeof the_message === "undefined") return;
 
 		socket.send(the_message);
 	}
 
-	get_subscriber_channel(channel: string, create: boolean = false) {
-		if (!this.subscriptions.has(channel)) {
-			this.subscriptions.set(channel, new Set());
+	/**
+	 * @param channel
+	 * @param create_if_missing
+	 * @returns
+	 */
+	get_subscriptions_by_channel(channel: string, create_if_missing: boolean = false) {
+		if (false === this.subscriptions_by_channel.has(channel) && true === create_if_missing) {
+			this.subscriptions_by_channel.set(channel, new Set());
 		}
-		return this.subscriptions.get(channel);
+		return this.subscriptions_by_channel.get(channel);
+	}
+
+	/**
+	 * @param socket
+	 * @returns
+	 */
+	get_subscriptions_by_client(socket: CoinbinatorDecoratedWebSocket): Set<string> | undefined {
+		return this.subscriptions_by_client.get(socket);
 	}
 
 	/**
@@ -267,58 +242,4 @@ export class App {
 		this.tickers_dirty.add(generic_ticker);
 		this.tickers_dirty.add(exchange_ticker);
 	}
-
-	/**
-	 * Dispatches dirty tickers to subscribers
-	 */
-	dispatch_dirty_tickers() {
-		const tickers = this.tickers_dirty.values();
-
-		for (const socket of this.client_websockets) {
-			const socket_ticker_subscriptions = Array.from(tickers).filter((ticker) => socket.subscriptions?.has(ticker.id));
-			this.send_message(socket, {
-				type: SocketServerMessageType.TICKERS,
-				tickers: socket_ticker_subscriptions,
-			} as TickersServerMessage);
-		}
-
-		this.tickers_dirty.clear();
-	}
 }
-
-// class SocketCliProgram {
-// 	private director: App;
-// 	private program: Command;
-// 	private messages: SocketMessage[] = [];
-
-// 	constructor(director: App) {
-// 		this.director = director;
-
-// 		this.program = new Command();
-// 		this.program.exitOverride();
-
-// 		this.program.command("subs").action((symbol: string) => {
-// 			this.messages.push({ type: "MySubscriptions" });
-// 		});
-
-// 		this.program.command("sub <symbol>").action((symbol: string) => {
-// 			this.messages.push({ type: "SubscribeToSymbol", symbol: symbol });
-// 		});
-
-// 		this.program.command("unsub <symbol>").action((symbol: string) => {
-// 			this.messages.push({ type: "UnsubscribeToSymbol", symbol: symbol });
-// 		});
-
-// 		// console.log(this.program.commands);
-// 	}
-
-// 	parse(cmd: string) {
-// 		const messages = (this.messages = []);
-// 		try {
-// 			this.program.parse(["0", "0"].concat(cmd.split(/[ \t]+/)));
-// 		} catch (err) {
-// 			console.log(err);
-// 		}
-// 		return messages;
-// 	}
-// }

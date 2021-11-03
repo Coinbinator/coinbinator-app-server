@@ -1,7 +1,7 @@
 import Binance from "node-binance-api";
 import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
 import { app, value } from "../utils/helpers";
-import { norm_ticker_channel } from "../utils/parsers";
+import { norm_ticker_channel } from "../utils/parsers_and_normalizers";
 import { CoinbinatorExchange } from "../utils/types";
 
 export class ExchangeBinanceRepository {
