@@ -11,8 +11,7 @@ export type ClientMessage =
 	| MySubscriptionsClientMessage
 	| SubscribeToTickerClientMessage
 	| SubscribeToTickersClientMessage
-	| UnsubscribeToTickerClientMessage
-	| SymbolTickerClientMessage;
+	| UnsubscribeToTickerClientMessage;
 
 export type SetSocketIdClientMessage = {
 	//
@@ -41,11 +40,4 @@ export type UnsubscribeToTickerClientMessage = {
 	//
 	type: SocketClientMessageType.UNSUBSCRIBE_TO_TICKER;
 	ticker: string;
-};
-
-export type SymbolTickerClientMessage = {
-	//
-	type: SocketClientMessageType.SYMBOL_TICKER;
-	symbol: string;
-	last: number;
 };

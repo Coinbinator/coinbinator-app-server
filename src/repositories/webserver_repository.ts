@@ -18,7 +18,7 @@ export default class WebserverRepository {
 			res.end();
 		});
 
-		this.express.ws("/echo", (ws: ws, req: Request) => {
+		this.express.ws("/ws", (ws: ws, req: Request) => {
 			app().on_client_socket_connect(ws as CoinbinatorDecoratedWebSocket, req);
 		});
 	}

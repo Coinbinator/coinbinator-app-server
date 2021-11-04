@@ -75,7 +75,7 @@ export class App {
 		this.exchange_binance.init();
 		this.exchange_mercadobitcoin.init();
 
-		loop(5000, this.dispatch_dirty_tickers.bind(this));
+		loop(5000, this.flush_dirty_tickers.bind(this));
 
 		this.webserver.init();
 	}
@@ -91,6 +91,8 @@ export class App {
 
 		this.clients_sockets.add(socket);
 		this.subscriptions_by_client.set(socket, new Set());
+
+		console.log("client, connected");
 	}
 
 	/**
@@ -100,6 +102,7 @@ export class App {
 	 */
 	on_client_socket_message(socket: CoinbinatorDecoratedWebSocket, message: WsData) {
 		const normalized_messages = norm_client_socket_messages(message);
+
 		console.log("Message:");
 		console.log(message);
 		console.log(normalized_messages);
@@ -205,6 +208,8 @@ export class App {
 		this.subscriptions_by_client.delete(socket);
 		this.subscriptions_by_channel.forEach((value) => value.delete(socket));
 		this.clients_sockets.delete(socket);
+
+		console.log("client, closed");
 	}
 
 	/**
@@ -296,7 +301,7 @@ export class App {
 	/**
 	 * Dispatches dirty tickers to socket clients
 	 */
-	dispatch_dirty_tickers() {
+	flush_dirty_tickers() {
 		this.clients_sockets.forEach((socket) => {
 			const client_subscriptions = this.get_subscriptions_by_client(socket);
 
