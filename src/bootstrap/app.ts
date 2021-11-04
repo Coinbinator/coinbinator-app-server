@@ -12,8 +12,6 @@ import { ServerMessage, ServerMessageType, SubscriptionsServerMessage, TickersSe
 import { now } from "moment";
 
 export class App {
-	private _i: number = 1;
-
 	/**
 	 * Tickers grupped by exchange
 	 */
@@ -108,10 +106,6 @@ export class App {
 
 		for (const normalized_message of normalized_messages) {
 			if (normalized_message.type === SocketClientMessageType.SET_SOCKET_ID) {
-				return;
-			}
-
-			if (normalized_message.type === SocketClientMessageType.SYMBOL_TICKER) {
 				return;
 			}
 

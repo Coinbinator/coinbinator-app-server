@@ -8,7 +8,6 @@ export enum CoinbinatorExchange {
 }
 
 export type CoinbinatorTicker = {
-	n?: number;
 	id: string;
 	exchange: CoinbinatorExchange;
 	pair: string;

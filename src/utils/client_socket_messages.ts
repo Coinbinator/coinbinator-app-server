@@ -1,13 +1,18 @@
 export enum SocketClientMessageType {
 	MY_SUBSCRIPTIONS = "MySubscriptions",
 	SET_SOCKET_ID = "SetSocketId",
-	SYMBOL_TICKER = "SymbolTicker",
 	SUBSCRIBE_TO_TICKER = "SubscribeToTicker",
 	SUBSCRIBE_TO_TICKERS = "SubscribeToTickers",
 	UNSUBSCRIBE_TO_TICKER = "UnsubscribeToTicker",
 }
 
-export type ClientMessage = SetSocketIdClientMessage | MySubscriptionsClientMessage | SubscribeToTickerClientMessage | SubscribeToTickersClientMessage | UnsubscribeToTickerClientMessage | SymbolTickerClientMessage;
+export type ClientMessage =
+	| SetSocketIdClientMessage //
+	| MySubscriptionsClientMessage
+	| SubscribeToTickerClientMessage
+	| SubscribeToTickersClientMessage
+	| UnsubscribeToTickerClientMessage
+	| SymbolTickerClientMessage;
 
 export type SetSocketIdClientMessage = {
 	//
