@@ -1,18 +1,21 @@
 import Binance from "node-binance-api";
 import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
-import { app, loop, value } from "../utils/helpers";
-import { norm_ticker_channel } from "../utils/parsers_and_normalizers";
-import { CoinbinatorExchange } from "../utils/types";
+import { app, is_coin_usd_alias, loop, value } from "../utils/helpers";
+import { norm_ticker_channel, split_pair } from "../utils/parsers_and_normalizers";
+import { CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
 
 export class ExchangeBinanceRepository {
-	private binance: Binance;
+	private binance_api: Binance;
 
-	private ws_client?: WebSocket;
+	private binance_ws?: WebSocket;
 
-	private pair_map: Map<string, string> = new Map();
+	/**
+	 * stores the conversion map, from binance format to coinbinator format of pairs
+	 */
+	private binance_pair_map: Map<string, string> = new Map();
 
 	constructor() {
-		this.binance = new Binance();
+		this.binance_api = new Binance();
 	}
 
 	async init() {
@@ -23,28 +26,38 @@ export class ExchangeBinanceRepository {
 		this.init_ws();
 	}
 
+	private async init_ws() {
+		if (this.binance_ws) {
+			// TODO: handle existing websocket client
+		}
+		this.binance_ws = new WebSocket("wss://stream.binance.com:9443/ws/!miniTicker@arr");
+		this.binance_ws.addEventListener("open", this.ws_on_open.bind(this));
+		this.binance_ws.addEventListener("close", this.ws_on_close.bind(this));
+		this.binance_ws.addEventListener("message", this.ws_on_message.bind(this));
+	}
+
 	private async refresh_exchange_info() {
 		try {
-			const info = await this.binance.exchangeInfo();
+			const info = await this.binance_api.exchangeInfo();
 			const symbols = info.symbols;
 
 			for (const symbol_info of symbols) {
-				this.pair_map.set(
+				this.binance_pair_map.set(
 					//
 					`${symbol_info.symbol}`,
 					`${symbol_info.baseAsset}/${symbol_info.quoteAsset}`.toLocaleUpperCase()
 				);
 			}
 
-			const prices = (await this.binance.prices()) as { [pro: string]: string };
+			const prices = (await this.binance_api.prices()) as { [pro: string]: string };
 			for (const i in prices) {
-				const pair = this.pair_map.get(i);
+				const pair = this.norm_pair(i);
 
 				if (typeof pair === "undefined") continue;
 
 				const price = prices[pair];
 
-				app().update_ticker({
+				this.emit_ticker({
 					exchange: CoinbinatorExchange.BINANCE,
 					id: `${pair}@${CoinbinatorExchange.BINANCE}`,
 					pair: pair,
@@ -54,23 +67,15 @@ export class ExchangeBinanceRepository {
 		} catch (err) {}
 	}
 
-	async init_ws() {
-		if (this.ws_client) {
-			// TODO: handle existing websocket client
-		}
-		this.ws_client = new WebSocket("wss://stream.binance.com:9443/ws/!miniTicker@arr");
-		this.ws_client.addEventListener("open", this.ws_on_open.bind(this));
-		this.ws_client.addEventListener("close", this.ws_on_close.bind(this));
-		this.ws_client.addEventListener("message", this.ws_on_message.bind(this));
-	}
-
-	async ws_on_open(event: WsEvent) {
+	private async ws_on_open(event: WsEvent) {
 		// TODO: adicionando
 	}
 
-	async ws_on_close(event: WsEvent) {}
+	private async ws_on_close(event: WsEvent) {
+		// TODO: handle socket disconnection
+	}
 
-	async ws_on_message(event: WsMessageEvent) {
+	private async ws_on_message(event: WsMessageEvent) {
 		const event_data = value(() => {
 			if (typeof event.data === "string") return JSON.parse(event.data);
 			if (Buffer.isBuffer(event.data)) return JSON.parse(event.data.toString("utf-8"));
@@ -91,9 +96,9 @@ export class ExchangeBinanceRepository {
 	private handle_ws_24hr_mini_ticker(message: WS__24hrMiniTicker) {
 		const pair = this.norm_pair(message.s);
 
-		if (pair === void 0) return;
+		if (typeof pair === "undefined") return;
 
-		app().update_ticker({
+		this.emit_ticker({
 			exchange: CoinbinatorExchange.BINANCE,
 			id: `${pair}@${CoinbinatorExchange.BINANCE}`,
 			pair: pair,
@@ -101,39 +106,26 @@ export class ExchangeBinanceRepository {
 		});
 	}
 
-	norm_pair(s: string): string | undefined {
-		return this.pair_map.get(s);
+	private norm_pair(s: string): string | undefined {
+		return this.binance_pair_map.get(s);
 	}
 
-	// async refresh_exchange(): Promise<void> {
-	// 	if (this.refreshing_exchange) return;
-	// 	console.log("refreshing binance...");
-	// 	this.refreshing_exchange = true;
-	// 	///
+	private emit_ticker(ticker: CoinbinatorTicker) {
+		app().update_ticker(ticker);
 
-	// 	// const markets = await this.binance.loadMarkets();
-	// 	const tickers = await this.binance.fetchTickers();
-	// 	for (const symbol in tickers) {
-	// 		const ticker = tickers[symbol];
+		//NOTE: ticker regressions
+		const { base, quote } = split_pair(ticker.pair);
 
-	// 		// if (ticker.symbol !== "BTC/USDT") continue;
-
-	// 		if (ticker.last) app().register_ticker(symbol, ticker);
-
-	// 		// console.log(ticker);
-	// 		// break;
-	// 	}
-
-	// 	// console.log(tickers);
-
-	// 	///
-	// 	this.refreshing_exchange = false;
-	// 	console.log("done.");
-	// }
-
-	// initialize() {
-	// 	this.refresh_exchange_id = setInterval(() => this.refresh_exchange(), 30 * 1000);
-	// }
+		//NOTE: pair is USD related, emiting a USD ticker too
+		if (is_coin_usd_alias(quote)) {
+			app().update_ticker({
+				exchange: CoinbinatorExchange.BINANCE,
+				id: `${base}/USD@${CoinbinatorExchange.BINANCE}`,
+				pair: `${base}/USD`,
+				price: ticker.price,
+			});
+		}
+	}
 }
 
 type WS__24hrMiniTicker = {

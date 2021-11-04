@@ -43,3 +43,21 @@ export async function loop(ms: number, cb: () => unknown, heading: boolean = fal
 		cb();
 	}
 }
+
+export const coin_aliases = new Map<string, Set<string>>([
+	//
+	["USD", new Set(["USD", "USDT", "USDC", "TUSD", "SUSD", "BUSD"])],
+]);
+
+export function is_coin_usd_alias(coin: string | undefined): boolean {
+	if (typeof coin === "undefined") return false;
+
+	return coin_aliases.get("USD")?.has(coin) === true;
+}
+
+export function get_coin_aliases(coin: string): string[] {
+	for (const [_, aliases] of coin_aliases) {
+		if (aliases.has(coin)) return Array.from(aliases);
+	}
+	return [];
+}

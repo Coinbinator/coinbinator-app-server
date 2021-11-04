@@ -1,11 +1,11 @@
-import { loop, uuid, value } from "../utils/helpers";
+import { get_coin_aliases, is_coin_usd_alias, loop, uuid, value } from "../utils/helpers";
 import { CoinbinatorDecoratedWebSocket, CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
 import { ExchangeBinanceRepository } from "../repositories/exchange_binance_repository";
 import { ExchangeMercadoBitcoinRepository } from "../repositories/exchange_mercadobitcoin_repository";
 import WebserverRepository from "../repositories/webserver_repository";
 import { Data as WsData } from "ws";
 import { MySubscriptionsClientMessage, SocketClientMessageType, SubscribeToTickerClientMessage, SubscribeToTickersClientMessage, UnsubscribeToTickerClientMessage } from "../utils/client_socket_messages";
-import { norm_client_socket_messages, norm_ticker_channel } from "../utils/parsers_and_normalizers";
+import { norm_client_socket_messages, norm_ticker_channel, split_pair } from "../utils/parsers_and_normalizers";
 import { Request } from "express";
 import wu from "wu";
 import { ServerMessage, ServerMessageType, SubscriptionsServerMessage, TickersServerMessage } from "../utils/server_socket_messages";

@@ -51,3 +51,11 @@ export function norm_client_socket_messages(message: WsData): ClientMessage[] {
 
 	return messages;
 }
+
+export function split_pair(pair: string | undefined): { base?: string; quote?: string } {
+	if (typeof pair === "undefined") return {};
+
+	let { base, quote, exchange } = /^(?<base>[^@]*)[\/\_](?<quote>[^@]*)/gi.exec(pair?.toLocaleUpperCase() || "")?.groups || {};
+
+	return { base, quote };
+}

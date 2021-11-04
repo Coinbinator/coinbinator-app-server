@@ -2,7 +2,7 @@ import Axios from "axios";
 import Binance from "node-binance-api";
 import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
 import { app, loop, value } from "../utils/helpers";
-import { CoinbinatorExchange } from "../utils/types";
+import { CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
 
 /**
  * Which pairs we should consider,
@@ -108,13 +108,19 @@ export class ExchangeMercadoBitcoinRepository {
 		for (const ticker of tickers) {
 			if (ticker === void 0) continue;
 
-			app().update_ticker({
+			this.emit_ticker({
 				exchange: CoinbinatorExchange.MERCADO_BITCOIN,
 				id: `${ticker.pair}@${CoinbinatorExchange.MERCADO_BITCOIN}`,
 				pair: ticker.pair,
 				price: ticker.last,
 			});
 		}
+	}
+
+	private emit_ticker(ticker: CoinbinatorTicker) {
+		app().update_ticker(ticker);
+
+		//TODO: emit computed USD tickers
 	}
 
 	private async tapi(uri: string): Promise<any> {
