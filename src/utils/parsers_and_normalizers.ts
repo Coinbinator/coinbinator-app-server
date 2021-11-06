@@ -66,18 +66,17 @@ export function split_pair(pair: string | undefined): { base: string; quote: str
 	return { base, quote };
 }
 
-export function assert_valid_symbol_string(symbol: string | unknown): asserts symbol {
+export function assert_valid_symbol_string(symbol: string | unknown): asserts symbol is string {
 	if (typeof symbol !== "string") throw new InvalidSymbolString(sprintf(`invalid symbol string: "%s"`, symbol));
 	if (symbol === "") throw new InvalidSymbolString(sprintf(`invalid symbol string: "%s"`, symbol));
 }
 
-export function assert_valid_pair_string(pair: string | unknown): asserts pair {
+export function assert_valid_pair_string(pair: string | unknown): asserts pair is string {
 	if (typeof pair !== "string") throw new InvalidPairString(sprintf(`invalid pair string: "%s"`, pair));
 	if (pair === "") throw new InvalidPairString(sprintf(`invalid pair string: "%s"`, pair));
 }
 
-export function assert_valid_pair(pair: Pair | undefined): asserts pair {
+export function assert_valid_pair(pair: Pair | undefined): asserts pair is Pair {
 	if (typeof pair === "undefined") throw new InvalidPairString(sprintf(`invalid pair: "%s"`, JSON.stringify(pair)));
 	if (!(pair instanceof Pair)) throw new InvalidPairString(sprintf(`pair is not instance of Pair: "%s"`, JSON.stringify(pair)));
 }
-

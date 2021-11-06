@@ -1,9 +1,9 @@
 import { assert_valid_symbol_string } from "../utils/parsers_and_normalizers";
 
 export class Pair {
-	key!: string;
-	base!: string;
-	quote!: string;
+	readonly key!: string;
+	readonly base!: string;
+	readonly quote!: string;
 
 	constructor(base: string, quote: string) {
 		assert_valid_symbol_string(base);
