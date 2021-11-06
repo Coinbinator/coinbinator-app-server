@@ -1,6 +1,8 @@
 import Axios from "axios";
 import Binance from "node-binance-api";
 import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
+import { Pair } from "../metas/pair";
+import Pairs from "../metas/pairs";
 import { app, loop, value } from "../utils/helpers";
 import { CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
 
@@ -131,19 +133,16 @@ export class ExchangeMercadoBitcoinRepository {
 
 	private async tapi_ticker(symbol: string): Promise<Tapi__Ticker> {
 		return this.tapi(`/${symbol}/ticker/`)
-			.then(
-				(response) =>
-					({
-						pair: `${symbol}/BRL`,
-						...(response?.data?.ticker || {}),
-					} as Tapi__Ticker)
-			)
+			.then<Tapi__Ticker>((response) => ({
+				pair: Pairs.get(symbol, "BRL", true),
+				...(response?.data?.ticker || {}),
+			}))
 			.catch((x) => void 0) as Promise<Tapi__Ticker>;
 	}
 }
 
 type Tapi__Ticker = {
-	pair: string;
+	pair: Pair;
 	high: string;
 	low: string;
 	vol: string;

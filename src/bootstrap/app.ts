@@ -10,12 +10,18 @@ import { Request } from "express";
 import wu from "wu";
 import { ServerMessage, ServerMessageType, SubscriptionsServerMessage, TickersServerMessage } from "../utils/server_socket_messages";
 import { now } from "moment";
+import { Pair } from "../metas/pair";
 
 export class App {
 	/**
+	 * Pairs statics meta
+	 */
+	readonly pairs: Map<string, Pair> = new Map();
+
+	/**
 	 * Tickers grupped by exchange
 	 */
-	readonly tickers: Map<CoinbinatorExchange, Map<string, CoinbinatorTicker>> = new Map();
+	readonly tickers: Map<CoinbinatorExchange, Map<Pair, CoinbinatorTicker>> = new Map();
 
 	/**
 	 * All knowon/loaded tickers
@@ -259,7 +265,7 @@ export class App {
 	 * @param pair
 	 * @returns
 	 */
-	find_or_create_ticker(exchange: CoinbinatorExchange, pair: string): CoinbinatorTicker {
+	find_or_create_ticker(exchange: CoinbinatorExchange, pair: Pair): CoinbinatorTicker {
 		if (this.tickers?.get(exchange)?.has(pair) === true) {
 			return this.tickers?.get(exchange)?.get(pair) as any as CoinbinatorTicker;
 		}

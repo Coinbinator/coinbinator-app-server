@@ -1,7 +1,11 @@
+import assert from "assert";
 import Binance from "node-binance-api";
+import { type } from "os";
 import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
+import { Pair } from "../metas/pair";
+import Pairs from "../metas/pairs";
 import { app, is_coin_usd_alias, loop, value } from "../utils/helpers";
-import { norm_ticker_channel, split_pair } from "../utils/parsers_and_normalizers";
+import { assert_valid_pair, assert_valid_pair_string, norm_ticker_channel, split_pair } from "../utils/parsers_and_normalizers";
 import { CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
 
 export class ExchangeBinanceRepository {
@@ -12,7 +16,7 @@ export class ExchangeBinanceRepository {
 	/**
 	 * stores the conversion map, from binance format to coinbinator format of pairs
 	 */
-	private binance_pair_map: Map<string, string> = new Map();
+	private binance_pair_map: Map<string, Pair> = new Map();
 
 	constructor() {
 		this.binance_api = new Binance();
@@ -45,17 +49,15 @@ export class ExchangeBinanceRepository {
 				this.binance_pair_map.set(
 					//
 					`${symbol_info.symbol}`,
-					`${symbol_info.baseAsset}/${symbol_info.quoteAsset}`.toLocaleUpperCase()
+					Pairs.get(symbol_info.baseAsset, symbol_info.quoteAsset, true)
 				);
 			}
 
 			const prices = (await this.binance_api.prices()) as { [pro: string]: string };
+
 			for (const i in prices) {
 				const pair = this.norm_pair(i);
-
-				if (typeof pair === "undefined") continue;
-
-				const price = prices[pair];
+				const price = prices[`${pair.base}${pair.quote}`];
 
 				this.emit_ticker({
 					exchange: CoinbinatorExchange.BINANCE,
@@ -106,25 +108,30 @@ export class ExchangeBinanceRepository {
 		});
 	}
 
-	private norm_pair(s: string): string | undefined {
-		return this.binance_pair_map.get(s);
-	}
-
 	private emit_ticker(ticker: CoinbinatorTicker) {
 		app().update_ticker(ticker);
 
-		//NOTE: ticker regressions
-		const { base, quote } = split_pair(ticker.pair);
-
 		//NOTE: pair is USD related, emiting a USD ticker too
-		if (is_coin_usd_alias(quote)) {
+		if (is_coin_usd_alias(ticker.pair.quote)) {
 			app().update_ticker({
 				exchange: CoinbinatorExchange.BINANCE,
-				id: `${base}/USD@${CoinbinatorExchange.BINANCE}`,
-				pair: `${base}/USD`,
+				id: `${ticker.pair.key}@${CoinbinatorExchange.BINANCE}`,
+				pair: ticker.pair,
 				price: ticker.price,
 			});
 		}
+	}
+
+	/**
+	 * @param pair
+	 * @returns
+	 */
+	private norm_pair(pair: string): Pair {
+		const norm_pair = this.binance_pair_map.get(pair);
+
+		assert_valid_pair(norm_pair);
+
+		return norm_pair;
 	}
 }
 
