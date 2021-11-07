@@ -4,7 +4,7 @@ import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws"
 import { Pair } from "../metas/pair";
 import Pairs from "../metas/pairs";
 import { app, loop, value } from "../utils/helpers";
-import { CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
+import { CoinbinatorExchange, CoinbinatorTickerUpdate } from "../utils/types";
 
 /**
  * Which pairs we should consider,
@@ -112,14 +112,13 @@ export class ExchangeMercadoBitcoinRepository {
 
 			this.emit_ticker({
 				exchange: CoinbinatorExchange.MERCADO_BITCOIN,
-				id: `${ticker.pair}@${CoinbinatorExchange.MERCADO_BITCOIN}`,
 				pair: ticker.pair,
 				price: ticker.last,
 			});
 		}
 	}
 
-	private emit_ticker(ticker: CoinbinatorTicker) {
+	private emit_ticker(ticker: CoinbinatorTickerUpdate) {
 		app().update_ticker(ticker);
 
 		//TODO: emit computed USD tickers

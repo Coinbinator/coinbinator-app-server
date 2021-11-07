@@ -8,13 +8,6 @@ export enum CoinbinatorExchange {
 	MERCADO_BITCOIN = "MERCADO_BITCOIN",
 }
 
-export type CoinbinatorTicker = {
-	id: string;
-	exchange: CoinbinatorExchange;
-	pair: Pair;
-	price: string;
-};
-
 export type CoinbinatorDecoratedWebSocket = WebSocket & {
 	session_id?: string;
 };
@@ -22,3 +15,9 @@ export type CoinbinatorDecoratedWebSocket = WebSocket & {
 export enum CoinbinatorClientSubscriptionType {
 	TICKER_SUBSCRIPTION = "TICKER_SUBSCRIPTION",
 }
+
+export type CoinbinatorTickerUpdate = {
+	exchange: CoinbinatorExchange;
+	pair: Pair;
+	price: string;
+};

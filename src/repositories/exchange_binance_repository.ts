@@ -6,7 +6,7 @@ import { Pair } from "../metas/pair";
 import Pairs from "../metas/pairs";
 import { app, is_coin_usd_alias, loop, value } from "../utils/helpers";
 import { assert_valid_pair, assert_valid_pair_string, norm_ticker_channel, split_pair } from "../utils/parsers_and_normalizers";
-import { CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
+import { CoinbinatorExchange, CoinbinatorTickerUpdate } from "../utils/types";
 
 export class ExchangeBinanceRepository {
 	private binance_api: Binance;
@@ -61,7 +61,6 @@ export class ExchangeBinanceRepository {
 
 				this.emit_ticker({
 					exchange: CoinbinatorExchange.BINANCE,
-					id: `${pair}@${CoinbinatorExchange.BINANCE}`,
 					pair: pair,
 					price: price,
 				});
@@ -102,20 +101,18 @@ export class ExchangeBinanceRepository {
 
 		this.emit_ticker({
 			exchange: CoinbinatorExchange.BINANCE,
-			id: `${pair}@${CoinbinatorExchange.BINANCE}`,
 			pair: pair,
 			price: message.c,
 		});
 	}
 
-	private emit_ticker(ticker: CoinbinatorTicker) {
+	private emit_ticker(ticker: CoinbinatorTickerUpdate) {
 		app().update_ticker(ticker);
 
 		//NOTE: pair is USD related, emiting a USD ticker too
 		if (is_coin_usd_alias(ticker.pair.quote)) {
 			app().update_ticker({
 				exchange: CoinbinatorExchange.BINANCE,
-				id: `${ticker.pair.key}@${CoinbinatorExchange.BINANCE}`,
 				pair: Pairs.get(ticker.pair.base, "USD", true),
 				price: ticker.price,
 			});

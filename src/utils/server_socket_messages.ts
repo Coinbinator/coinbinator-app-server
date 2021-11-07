@@ -1,4 +1,4 @@
-import { CoinbinatorTicker } from "./types";
+import CoinbinatorTicker from "../metas/ticker";
 
 export enum ServerMessageType {
 	SUBSCRIPTIONS = "Subscriptions",

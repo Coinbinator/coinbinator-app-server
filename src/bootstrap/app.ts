@@ -1,10 +1,10 @@
-import { CoinbinatorDecoratedWebSocket, CoinbinatorExchange, CoinbinatorTicker } from "../utils/types";
+import { CoinbinatorDecoratedWebSocket, CoinbinatorExchange, CoinbinatorTickerUpdate } from "../utils/types";
 import { Data as WsData } from "ws";
 import { ExchangeBinanceRepository } from "../repositories/exchange_binance_repository";
 import { ExchangeMercadoBitcoinRepository } from "../repositories/exchange_mercadobitcoin_repository";
 import { is_coin_alias, is_coin_usd_alias, loop, mapset_put_if_missing, uuid, value } from "../utils/helpers";
 import { MySubscriptionsClientMessage, SocketClientMessageType, SubscribeToTickerClientMessage, SubscribeToTickersClientMessage, UnsubscribeToTickerClientMessage } from "../utils/client_socket_messages";
-import { norm_client_socket_messages, norm_ticker_channel } from "../utils/parsers_and_normalizers";
+import { norm_client_socket_messages, norm_ticker_channel, split_ticker_channel } from "../utils/parsers_and_normalizers";
 import { Pair } from "../metas/pair";
 import { Request } from "express";
 import { ServerMessage, ServerMessageType, SubscriptionsServerMessage, TickersServerMessage } from "../utils/server_socket_messages";
@@ -15,6 +15,7 @@ import Pairs from "../metas/pairs";
 import { X_OK } from "constants";
 import { type } from "os";
 import { format } from "util";
+import CoinbinatorTicker from "../metas/ticker";
 
 export class App {
 	/**
@@ -288,22 +289,16 @@ export class App {
 	 */
 	find_or_create_ticker(exchange: CoinbinatorExchange, pair: Pair): CoinbinatorTicker {
 		if (this.tickers?.get(exchange)?.has(pair) === true) {
-			return this.tickers?.get(exchange)?.get(pair) as any as CoinbinatorTicker;
+			return this.tickers.get(exchange)!.get(pair)!;
 		}
 
-		const ticker = {
-			// i: this._i++,
-			id: `${pair}@${exchange}`,
-			exchange: exchange,
-			pair: pair,
-			price: "-1",
-		};
+		const ticker = new CoinbinatorTicker(exchange, pair);
 
 		// NOTE: creating exchange map if not exists
 		if (!this.tickers.has(exchange)) this.tickers.set(exchange, new Map());
 
 		// NOTE: registering new tickers
-		this.tickers.get(exchange)?.set(pair, ticker);
+		this.tickers.get(exchange)!.set(pair, ticker);
 		this.tickers_all.add(ticker);
 
 		return ticker;
@@ -314,7 +309,7 @@ export class App {
 	 *
 	 * @param ticker
 	 */
-	update_ticker(ticker: CoinbinatorTicker) {
+	update_ticker(ticker: CoinbinatorTickerUpdate) {
 		const generic_ticker = this.find_or_create_ticker(CoinbinatorExchange.GENERIC, ticker.pair);
 		const exchange_ticker = this.find_or_create_ticker(ticker.exchange, ticker.pair);
 
@@ -337,33 +332,21 @@ export class App {
 
 			assert(client_subscriptions instanceof Set);
 
-			// const sub_tickers = wu(client_subscriptions)
-			// 	.map((sub) => {
-			// 		if (!is_ticker_channel(sub)) return void 0;
-
-			// 		const { ticker: ticker_key, base: ticker_base, quote: ticker_quote } = split_ticker_channel(sub);
-
-			// 		const ticker = wu(this.tickers_dirty).find((ticker) => ticker.id === ticker_key);
-
-			// 		// if (typeof ticker === "undefined" && this.granted_ticker_quotes.has(ticker_quote)) {
-			// 		// 	const virtual_ticcker = this.generate_virtual_ticker(ticker_base, ticker_quote);
-			// 		// }
-
-			// 		return {
-			// 			subscription: sub,
-			// 			ticker: ticker,
-			// 		};
-			// 	})
-			// 	.filter((x) => !!x)
-			// 	.toArray();
-			// console.log(sub_tickers);
-
 			const tickers = wu(this.tickers_dirty)
-				.filter((ticker) => client_subscriptions?.has(ticker.id) === true)
+				.filter((ticker) => client_subscriptions.has(ticker.channel) === true)
 				.toArray();
 
 			// NOTE: not subscribed to any dirty ticker
-			if (tickers.length === 0) return;
+
+			// console.log(client_subscriptions, this.tickers_dirty.values());
+
+			if (tickers.length === 0) {
+				console.log("not tickers to send");
+
+				return;
+			}
+
+			console.log("sending tickers");
 
 			this.socket_send_message(socket, {
 				type: ServerMessageType.TICKERS,
@@ -410,15 +393,10 @@ export class App {
 				}, 1);
 
 				if (!this.tickers_computed.has(pair)) {
-					this.tickers_computed.set(pair, {
-						exchange: CoinbinatorExchange.GENERIC,
-						id: `${pair}@${CoinbinatorExchange.GENERIC}`,
-						pair: pair,
-						price: computed_price.toString(),
-					});
+					this.tickers_computed.set(pair, new CoinbinatorTicker(CoinbinatorExchange.GENERIC, pair));
 				}
 
-				(this.tickers_computed.get(pair) as CoinbinatorTicker).price = computed_price.toString();
+				this.tickers_computed.get(pair)!.price = computed_price.toString();
 			}
 		}
 	}
