@@ -2,20 +2,18 @@ import { CoinbinatorDecoratedWebSocket, CoinbinatorExchange, CoinbinatorTickerUp
 import { Data as WsData } from "ws";
 import { ExchangeBinanceRepository } from "../repositories/exchange_binance_repository";
 import { ExchangeMercadoBitcoinRepository } from "../repositories/exchange_mercadobitcoin_repository";
-import { is_coin_alias, is_coin_usd_alias, loop, mapset_put_if_missing, uuid, value } from "../utils/helpers";
+import { is_coin_alias, loop, mapset_put_if_missing, uuid, value } from "../utils/helpers";
 import { MySubscriptionsClientMessage, SocketClientMessageType, SubscribeToTickerClientMessage, SubscribeToTickersClientMessage, UnsubscribeToTickerClientMessage } from "../utils/client_socket_messages";
-import { norm_client_socket_messages, norm_ticker_channel, split_ticker_channel } from "../utils/parsers_and_normalizers";
+import { norm_client_socket_messages, norm_ticker_channel } from "../utils/parsers_and_normalizers";
 import { Pair } from "../metas/pair";
 import { Request } from "express";
-import { ServerMessage, ServerMessageType, SubscriptionsServerMessage, TickersServerMessage } from "../utils/server_socket_messages";
+import { ServerMessage, ServerMessageType, SubscriptionsServerMessage } from "../utils/server_socket_messages";
 import assert from "assert";
 import WebserverRepository from "../repositories/webserver_repository";
 import wu from "wu";
 import Pairs from "../metas/pairs";
-import { X_OK } from "constants";
-import { type } from "os";
-import { format } from "util";
 import CoinbinatorTicker from "../metas/ticker";
+import { tickers_server_message_resource } from "./transformers";
 
 export class App {
 	/**
@@ -206,10 +204,7 @@ export class App {
 
 		if (tickets.length === 0) return;
 
-		this.socket_send_message(socket, {
-			type: ServerMessageType.TICKERS,
-			tickers: tickets,
-		} as TickersServerMessage);
+		this.socket_send_message(socket, tickers_server_message_resource.transform(tickets));
 	}
 
 	/**
@@ -348,10 +343,7 @@ export class App {
 
 			console.log("sending tickers");
 
-			this.socket_send_message(socket, {
-				type: ServerMessageType.TICKERS,
-				tickers: tickers,
-			} as TickersServerMessage);
+			this.socket_send_message(socket, tickers_server_message_resource.transform(tickers));
 		});
 
 		this.tickers_dirty.clear();

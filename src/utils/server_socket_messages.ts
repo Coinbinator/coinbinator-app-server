@@ -1,4 +1,6 @@
+import { Pair } from "../metas/pair";
 import CoinbinatorTicker from "../metas/ticker";
+import { CoinbinatorExchange } from "./types";
 
 export enum ServerMessageType {
 	SUBSCRIPTIONS = "Subscriptions",
@@ -15,5 +17,11 @@ export type SubscriptionsServerMessage = {
 export type TickersServerMessage = {
 	//
 	type: ServerMessageType.TICKERS;
-	tickers: CoinbinatorTicker[];
+	tickers: TickersServerMessage_Ticker[];
+};
+
+export type TickersServerMessage_Ticker = {
+	exchange: CoinbinatorExchange;
+	pair: string;
+	price: string;
 };
