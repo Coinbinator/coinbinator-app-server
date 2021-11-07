@@ -18,3 +18,7 @@ export type CoinbinatorTicker = {
 export type CoinbinatorDecoratedWebSocket = WebSocket & {
 	session_id?: string;
 };
+
+export enum CoinbinatorClientSubscriptionType {
+	TICKER_SUBSCRIPTION = "TICKER_SUBSCRIPTION",
+}

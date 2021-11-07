@@ -49,10 +49,19 @@ export const coin_aliases = new Map<string, Set<string>>([
 	["USD", new Set(["USD", "USDT", "USDC", "TUSD", "SUSD", "BUSD"])],
 ]);
 
-export function is_coin_usd_alias(coin: string | undefined): boolean {
-	if (typeof coin === "undefined") return false;
+export function is_coin_alias(symbol: string | undefined, other: string | undefined): boolean {
+	if (typeof symbol === "undefined") return false;
+	if (typeof other === "undefined") return false;
+	if (symbol === other) return true;
 
-	return coin_aliases.get("USD")?.has(coin) === true;
+	return coin_aliases.get(symbol)?.has(other) === true;
+}
+
+export function is_coin_usd_alias(symbol: string | undefined): boolean {
+	if (typeof symbol === "undefined") return false;
+	if ("USD" === symbol) return true;
+
+	return coin_aliases.get("USD")?.has(symbol) === true;
 }
 
 export function get_coin_aliases(coin: string): string[] {
@@ -60,4 +69,11 @@ export function get_coin_aliases(coin: string): string[] {
 		if (aliases.has(coin)) return Array.from(aliases);
 	}
 	return [];
+}
+
+export function mapset_put_if_missing<T, U>(map: Map<T, Set<U>>, key: T, value: U) {
+	if (!map.has(key)) map.set(key, new Set());
+
+	const set = map.get(key);
+	if (!set?.has(value)) set?.add(value);
 }

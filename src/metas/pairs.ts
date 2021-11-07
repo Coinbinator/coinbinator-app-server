@@ -6,6 +6,10 @@ import { Pair } from "./pair";
 export default abstract class Pairs {
 	private static pairs: Map<string, Pair> = new Map();
 
+	static all() {
+		return Pairs.pairs;
+	}
+
 	static get(base: string, quote: string, register_if_missing: boolean = false): Pair {
 		assert_valid_symbol_string(base);
 		assert_valid_symbol_string(quote);

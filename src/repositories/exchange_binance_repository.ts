@@ -116,7 +116,7 @@ export class ExchangeBinanceRepository {
 			app().update_ticker({
 				exchange: CoinbinatorExchange.BINANCE,
 				id: `${ticker.pair.key}@${CoinbinatorExchange.BINANCE}`,
-				pair: ticker.pair,
+				pair: Pairs.get(ticker.pair.base, "USD", true),
 				price: ticker.price,
 			});
 		}

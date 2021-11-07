@@ -1,23 +1,40 @@
 import { CoinbinatorExchange } from "./types";
-import { WebSocket, Data as WsData } from "ws";
+import { Data as WsData } from "ws";
 import { ClientMessage } from "./client_socket_messages";
-import { InvalidPairString, InvalidSymbolString } from "./errors";
+import { InvalidExchangeString, InvalidPairString, InvalidSymbolString } from "./errors";
 import { format as sprintf } from "util";
 import { Pair } from "../metas/pair";
+import Pairs from "../metas/pairs";
+
+
 
 export function norm_symbol(symbol: string | undefined): string {
 	return symbol?.toLocaleUpperCase()?.trim() || "";
 }
 
-export function norm_ticker_channel(ticker: string): string | undefined {
-	let { base, quote, exchange } = /^(?<base>[^@]*)[\/\_](?<quote>[^@]*)(\@(?<exchange>[^\@]+))?$/gi.exec(ticker?.toLocaleUpperCase() || "")?.groups || {};
+export function norm_ticker_channel(channel: string): string | undefined {
+	let { base, quote, exchange } = /^(TICKER\:)?(?<base>[^@]*)[\/\_](?<quote>[^@]*)(\@(?<exchange>[^\@]+))?$/gi.exec(channel?.toLocaleUpperCase() || "")?.groups || {};
 	base = norm_symbol(base);
 	quote = norm_symbol(quote);
 	exchange = exchange?.trim()?.toLocaleUpperCase();
 
 	if (!base || !quote) return void 0;
 
-	return `${base}/${quote}@${exchange || CoinbinatorExchange.GENERIC}`;
+	return `TICKER:${base}/${quote}@${exchange || CoinbinatorExchange.GENERIC}`;
+}
+
+export function is_ticker_channel(ticker: string): boolean {
+	return /^TICKER\:/gi.test(ticker);
+}
+
+export function split_ticker_channel(channel: string) {
+	let { base, quote, exchange } = /^(TICKER\:)?(?<base>[^@]*)[\/\_](?<quote>[^@]*)(\@(?<exchange>[^\@]+))?$/gi.exec(channel?.toLocaleUpperCase() || "")?.groups || {};
+	return {
+		base,
+		quote,
+		exchange,
+		ticker: `${base}/${quote}@${exchange}`,
+	};
 }
 
 /**
@@ -79,4 +96,10 @@ export function assert_valid_pair_string(pair: string | unknown): asserts pair i
 export function assert_valid_pair(pair: Pair | undefined): asserts pair is Pair {
 	if (typeof pair === "undefined") throw new InvalidPairString(sprintf(`invalid pair: "%s"`, JSON.stringify(pair)));
 	if (!(pair instanceof Pair)) throw new InvalidPairString(sprintf(`pair is not instance of Pair: "%s"`, JSON.stringify(pair)));
+}
+
+export function assert_valid_exchange(exchange: string): asserts exchange is CoinbinatorExchange {
+	console.log(Object.keys(CoinbinatorExchange));
+
+	if (Object.keys(CoinbinatorExchange).indexOf(exchange) === -1) throw new InvalidExchangeString(sprintf(`Invalid exchange string: %s`, JSON.stringify(exchange)));
 }
