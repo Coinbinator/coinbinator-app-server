@@ -2,6 +2,7 @@ import { assert_valid_symbol_string } from "../utils/parsers_and_normalizers";
 
 export class Pair {
 	readonly key!: string;
+	readonly idn: string;
 	readonly base!: string;
 	readonly quote!: string;
 
@@ -11,6 +12,8 @@ export class Pair {
 
 		this.base = base;
 		this.quote = quote;
+
+		this.idn = [base, quote].sort().join("/");
 		this.key = `${this.base}/${this.quote}`;
 	}
 

@@ -6,8 +6,6 @@ import { format as sprintf } from "util";
 import { Pair } from "../metas/pair";
 import Pairs from "../metas/pairs";
 
-
-
 export function norm_symbol(symbol: string | undefined): string {
 	return symbol?.toLocaleUpperCase()?.trim() || "";
 }
@@ -29,10 +27,14 @@ export function is_ticker_channel(ticker: string): boolean {
 
 export function split_ticker_channel(channel: string) {
 	let { base, quote, exchange } = /^(TICKER\:)?(?<base>[^@]*)[\/\_](?<quote>[^@]*)(\@(?<exchange>[^\@]+))?$/gi.exec(channel?.toLocaleUpperCase() || "")?.groups || {};
+
+	
+
 	return {
 		base,
 		quote,
 		exchange,
+		pair: Pairs.get(base, quote, true),
 		ticker: `${base}/${quote}@${exchange}`,
 	};
 }

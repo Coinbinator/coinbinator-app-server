@@ -4,7 +4,7 @@ import { ExchangeBinanceRepository } from "../repositories/exchange_binance_repo
 import { ExchangeMercadoBitcoinRepository } from "../repositories/exchange_mercadobitcoin_repository";
 import { is_coin_alias, loop, mapset_put_if_missing, uuid, value } from "../utils/helpers";
 import { MySubscriptionsClientMessage, SocketClientMessageType, SubscribeToTickerClientMessage, SubscribeToTickersClientMessage, UnsubscribeToTickerClientMessage } from "../utils/client_socket_messages";
-import { norm_client_socket_messages, norm_ticker_channel } from "../utils/parsers_and_normalizers";
+import { norm_client_socket_messages, norm_ticker_channel, split_ticker_channel } from "../utils/parsers_and_normalizers";
 import { Pair } from "../metas/pair";
 import { Request } from "express";
 import { ServerMessage, ServerMessageType, SubscriptionsServerMessage } from "../utils/server_socket_messages";
@@ -14,6 +14,8 @@ import wu from "wu";
 import Pairs from "../metas/pairs";
 import CoinbinatorTicker from "../metas/ticker";
 import { tickers_server_message_resource } from "./transformers";
+import { format } from "util";
+import { type } from "os";
 
 export class App {
 	/**
@@ -188,8 +190,13 @@ export class App {
 	 * @param message
 	 */
 	handle_client_message__subscribe_to_tickers(socket: CoinbinatorDecoratedWebSocket, message: SubscribeToTickersClientMessage) {
+		console.log("---");
+		console.log(message);
+
 		for (const t of message.tickers) {
 			const ticker = norm_ticker_channel(t);
+
+			console.log(ticker);
 
 			if (typeof ticker === "undefined") continue;
 
@@ -331,11 +338,32 @@ export class App {
 				.filter((ticker) => client_subscriptions.has(ticker.channel) === true)
 				.toArray();
 
-			// NOTE: not subscribed to any dirty ticker
+			const missing_tickers = wu(client_subscriptions)
+				.reject((sub) => typeof tickers.find((ticker) => ticker.channel === sub) !== "undefined")
+				.map((sub) => {
+					const { pair } = split_ticker_channel(sub);
 
+					console.log(pair, sub, this.tickers_computed.get(pair)?.channel);
+
+					// console.log("+++");
+					// console.log(pair);
+					// console.log(this.tickers_computed.get(pair));
+
+					return this.tickers_computed.get(pair)!;
+				})
+				// .filter((ticker) => !!ticker)
+				.toArray();
+
+			console.log(tickers.length + missing_tickers.length);
+
+			// console.log(this.tickers_computed.values());
+
+			// console.log(missing_tickers, client_subscriptions);
+
+			// NOTE: not subscribed to any dirty ticker
 			// console.log(client_subscriptions, this.tickers_dirty.values());
 
-			if (tickers.length === 0) {
+			if (tickers.length === 0 && missing_tickers.length === 0) {
 				console.log("not tickers to send");
 
 				return;
@@ -343,13 +371,24 @@ export class App {
 
 			console.log("sending tickers");
 
-			this.socket_send_message(socket, tickers_server_message_resource.transform(tickers));
+			this.socket_send_message(socket, tickers_server_message_resource.transform([...tickers]));
 		});
 
 		this.tickers_dirty.clear();
 	}
 
 	update_cumputed_tickers() {
+		//NOTE: we will grant all granted quote combinations
+		for (const granted_base of this.granted_ticker_quotes) {
+			for (const granted_quote of this.granted_ticker_quotes) {
+				if (is_coin_alias(granted_base, granted_quote)) {
+					continue;
+				}
+				this.update_cumputed_tickers__compute_ticker(granted_base, granted_quote);
+			}
+		}
+
+		//NOTE: compute all missing base symbols
 		for (const granted_quote_symbol of this.granted_ticker_quotes) {
 			const granted_base_symbols = wu(this.exchange_pairs.get(CoinbinatorExchange.GENERIC) || [])
 				.filter((pair) => is_coin_alias(granted_quote_symbol, pair.quote))
@@ -357,6 +396,8 @@ export class App {
 				.unique()
 				.toArray()
 				.sort();
+
+			granted_base_symbols.concat(Array.from(this.granted_ticker_quotes));
 
 			const missing_base_symbols = wu(this.exchange_pairs.get(CoinbinatorExchange.GENERIC) || [])
 				.filter((pair) => granted_base_symbols.indexOf(pair.base) === -1)
@@ -369,34 +410,46 @@ export class App {
 				if (is_coin_alias(missing_base_symbol, granted_quote_symbol)) {
 					continue;
 				}
-
-				const path = this.find_ticker_hops([], missing_base_symbol, granted_quote_symbol);
-
-				if (typeof path === "undefined") {
-					// console.warn(format('unable to find path from "%s" to "%s"', missing_base_symbol, granted_quote_symbol));
-					continue;
-				}
-
-				const pair = Pairs.get(missing_base_symbol, granted_quote_symbol, true);
-
-				const computed_price = path.reduce((price, pair) => {
-					const ticker = this.find_or_create_ticker(CoinbinatorExchange.GENERIC, pair);
-					return price * parseFloat(ticker.price);
-				}, 1);
-
-				if (!this.tickers_computed.has(pair)) {
-					this.tickers_computed.set(pair, new CoinbinatorTicker(CoinbinatorExchange.GENERIC, pair));
-				}
-
-				this.tickers_computed.get(pair)!.price = computed_price.toString();
+				this.update_cumputed_tickers__compute_ticker(missing_base_symbol, granted_quote_symbol);
 			}
 		}
 	}
 
-	find_ticker_hops(path: Pair[], from_symbol: string, to_symbol: string): Pair[] | undefined {
+	update_cumputed_tickers__compute_ticker(base: string, quote: string) {
+		const path = this.find_ticker_hops([], base, quote);
+
+		if (base === "BRL") {
+			console.log(base, quote, base === quote, path);
+		}
+
+		if (typeof path === "undefined") {
+			// console.warn(format('unable to find path from "%s" to "%s"', base, quote));
+			return;
+		}
+
+		const pair = Pairs.get(base, quote, true);
+
+		const computed_price = path.reduce((price, pair) => {
+			const ticker = this.find_or_create_ticker(CoinbinatorExchange.GENERIC, pair);
+			return price * parseFloat(ticker.price);
+		}, 1);
+
+		if (!this.tickers_computed.has(pair)) {
+			this.tickers_computed.set(pair, new CoinbinatorTicker(CoinbinatorExchange.GENERIC, pair));
+		}
+
+		this.tickers_computed.get(pair)!.price = computed_price.toString();
+	}
+
+	find_ticker_hops(path: Pair[], from_symbol: string, to_symbol: string, idn: string | undefined = void 0): Pair[] | undefined {
+		if (typeof idn === "undefined") idn = `${from_symbol}/${to_symbol}`;
+
 		if (is_coin_alias(from_symbol, to_symbol)) return void 0;
 
+		// if (idn === "BRL/USD") console.log(path, from_symbol, to_symbol);
+
 		const tickers = this.tickers.get(CoinbinatorExchange.GENERIC) || [];
+
 		for (const [pair] of tickers) {
 			if (path.indexOf(pair) > -1) continue;
 
@@ -411,23 +464,23 @@ export class App {
 		let best: Pair[] | undefined;
 
 		for (const [pair] of tickers) {
-			if (path.indexOf(pair) > -1) continue;
+			if (path.findIndex((p) => p.idn === pair.idn) > -1) continue;
 
 			if (from_symbol === pair.base) {
-				const test = this.find_ticker_hops([...path, pair], pair.quote, to_symbol);
+				const test = this.find_ticker_hops([...path, pair], pair.quote, to_symbol, idn);
 
 				if (typeof test !== "undefined" && (typeof best === "undefined" || test.length < best.length)) {
 					best = test;
 				}
 			}
 
-			// if (from_symbol === pair.quote) {
-			// 	const test = this.find_ticker_hops([...path, pair], pair.base, to_symbol);
+			if (from_symbol === pair.quote) {
+				const test = this.find_ticker_hops([...path, pair], pair.base, to_symbol, idn);
 
-			// 	if (typeof test !== "undefined" && (typeof best === "undefined" || test.length < best.length)) {
-			// 		best = test;
-			// 	}
-			// }
+				if (typeof test !== "undefined" && (typeof best === "undefined" || test.length < best.length)) {
+					best = test;
+				}
+			}
 		}
 
 		return best;
