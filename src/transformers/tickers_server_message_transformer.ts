@@ -1,6 +1,6 @@
 import wu from "wu";
 import CoinbinatorTicker from "../metas/ticker";
-import { ServerMessageType, TickersServerMessage } from "../utils/server_socket_messages";
+import { ServerMessageType, TickersServerMessage, TickersServerMessage_Ticker } from "../utils/server_socket_messages";
 import TransformerAbstract from "./core/transformer_abstract";
 
 export type TickersServerMessageTransformerData = {
@@ -21,7 +21,7 @@ export default class TickersServerMessageTransformer extends TransformerAbstract
 		};
 	}
 
-	private map_prepare_ticker(ticker: CoinbinatorTicker) {
+	private map_prepare_ticker(ticker: CoinbinatorTicker): TickersServerMessage_Ticker {
 		return {
 			exchange: ticker.exchange,
 			pair: ticker.pair.key,
