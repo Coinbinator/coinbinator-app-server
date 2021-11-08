@@ -18,6 +18,7 @@ export type TickersServerMessage = {
 	//
 	type: ServerMessageType.TICKERS;
 	tickers: TickersServerMessage_Ticker[];
+	computed_tickers: TickersServerMessage_Ticker[];
 };
 
 export type TickersServerMessage_Ticker = {

@@ -14,8 +14,6 @@ import wu from "wu";
 import Pairs from "../metas/pairs";
 import CoinbinatorTicker from "../metas/ticker";
 import { tickers_server_message_resource } from "./transformers";
-import { format } from "util";
-import { type } from "os";
 
 export class App {
 	/**
@@ -107,6 +105,7 @@ export class App {
 	}
 
 	/**
+	 * Handles new socket client connection
 	 * @param socket
 	 */
 	on_client_socket_connect(socket: CoinbinatorDecoratedWebSocket, request: Request) {
@@ -211,7 +210,13 @@ export class App {
 
 		if (tickets.length === 0) return;
 
-		this.socket_send_message(socket, tickers_server_message_resource.transform(tickets));
+		this.socket_send_message(
+			socket,
+			tickers_server_message_resource.transform({
+				tickers: tickets,
+				computed_tickers: [],
+			})
+		);
 	}
 
 	/**
@@ -363,32 +368,30 @@ export class App {
 				.filter((ticker) => !!ticker)
 				.toArray();
 
-			console.log(client_subscriptions.size, tickers.length + missing_tickers.length);
-
-			// NOTE: not subscribed to any dirty ticker
-
+			//NOTE: no tickers to send
 			if (tickers.length === 0 && missing_tickers.length === 0) {
-				console.log("not tickers to send");
 				return;
 			}
 
-			console.log("sending tickers");
-			this.socket_send_message(socket, tickers_server_message_resource.transform([...tickers, ...missing_tickers]));
+			this.socket_send_message(
+				socket,
+				tickers_server_message_resource.transform({
+					tickers: tickers,
+					computed_tickers: missing_tickers,
+				})
+			);
 		});
 
 		this.tickers_dirty.clear();
 	}
 
+	/**
+	 * Compute granted pairs ticker, through arbritage
+	 */
 	update_cumputed_tickers() {
-		// this.update_cumputed_tickers__compute_ticker("BRL", "USD");
-		// return;
-
 		//NOTE: we will grant all granted quote combinations
 		for (const granted_base of this.granted_ticker_quotes) {
 			for (const granted_quote of this.granted_ticker_quotes) {
-				if (is_coin_alias(granted_base, granted_quote)) {
-					continue;
-				}
 				this.update_cumputed_tickers__compute_ticker(granted_base, granted_quote);
 			}
 		}
@@ -412,16 +415,24 @@ export class App {
 				.sort();
 
 			for (const missing_base_symbol of missing_base_symbols) {
-				if (is_coin_alias(missing_base_symbol, granted_quote_symbol)) {
-					continue;
-				}
 				this.update_cumputed_tickers__compute_ticker(missing_base_symbol, granted_quote_symbol);
 			}
 		}
 	}
 
+	/**
+	 * Compute arbritage price between two pairs
+	 *
+	 * @param base
+	 * @param quote
+	 */
 	update_cumputed_tickers__compute_ticker(base: string, quote: string) {
 		const path = this.find_ticker_hops([], base, quote);
+
+		// NOTE: skips computation of 'equal and similar' symbols (eg.: USD ==> USDT )
+		if (is_coin_alias(base, quote)) {
+			return;
+		}
 
 		if (typeof path === "undefined") {
 			// console.warn(format('unable to find path from "%s" to "%s"', base, quote));
@@ -454,6 +465,15 @@ export class App {
 		this.tickers_computed.get(pair)!.price = computed_price.toString();
 	}
 
+	/**
+	 * lookup for path between two tickers, to calculate arbritage of missing pairs
+	 *
+	 * @param path
+	 * @param from_symbol
+	 * @param to_symbol
+	 * @param idn
+	 * @returns
+	 */
 	find_ticker_hops(path: Pair[], from_symbol: string, to_symbol: string, idn: string | undefined = void 0): Pair[] | undefined {
 		if (typeof idn === "undefined") idn = `${from_symbol}/${to_symbol}`;
 
