@@ -1,7 +1,7 @@
-import CoinbinatorTicker from "../metas/ticker";
-import ItemResource from "../transformers/core/item_respurce";
-import TickersServerMessageTransformer, { TickersServerMessageTransformerData } from "../transformers/tickers_server_message_transformer";
-import { TickersServerMessage } from "../utils/server_socket_messages";
+import ItemResource from "@app/transformers/core/item_respurce";
+import TickersServerMessageTransformer, { TickersServerMessageTransformerData } from "@app/transformers/tickers_server_message_transformer";
+import { TickersServerMessage } from "@app/utils/server_socket_messages";
+
 
 /**
  * Tickers Server Message Transformer

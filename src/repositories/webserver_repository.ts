@@ -1,8 +1,8 @@
-import { app } from "../utils/helpers";
+import { app } from "@app/utils/helpers";
+import { CoinbinatorDecoratedWebSocket } from "@app/utils/types";
 import express, { Request } from "express";
 import { WithWebsocketMethod } from "express-ws";
 import * as ws from "ws";
-import { CoinbinatorDecoratedWebSocket } from "../utils/types";
 
 export default class WebserverRepository {
 	express: express.Express & WithWebsocketMethod;

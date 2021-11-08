@@ -1,7 +1,6 @@
-import assert from "assert";
-import { MissingPairError } from "../utils/errors";
-import { assert_valid_pair_string, assert_valid_symbol_string, split_pair } from "../utils/parsers_and_normalizers";
-import { Pair } from "./pair";
+import { MissingPairError } from "@app/utils/errors";
+import { assert_valid_symbol_string, split_pair } from "@app/utils/parsers_and_normalizers";
+import Pair from "./pair";
 
 export default abstract class Pairs {
 	private static pairs: Map<string, Pair> = new Map();

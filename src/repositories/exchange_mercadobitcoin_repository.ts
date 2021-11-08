@@ -1,10 +1,8 @@
+import Pair from "@app/metas/pair";
+import Pairs from "@app/metas/pairs";
+import { loop, app } from "@app/utils/helpers";
+import { CoinbinatorExchange, CoinbinatorTickerUpdate } from "@app/utils/types";
 import Axios from "axios";
-import Binance from "node-binance-api";
-import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
-import { Pair } from "../metas/pair";
-import Pairs from "../metas/pairs";
-import { app, loop, value } from "../utils/helpers";
-import { CoinbinatorExchange, CoinbinatorTickerUpdate } from "../utils/types";
 
 /**
  * Which pairs we should consider,
