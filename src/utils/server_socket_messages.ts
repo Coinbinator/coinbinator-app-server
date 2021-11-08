@@ -1,5 +1,3 @@
-import { Pair } from "../metas/pair";
-import CoinbinatorTicker from "../metas/ticker";
 import { CoinbinatorExchange } from "./types";
 
 export enum ServerMessageType {
@@ -18,7 +16,7 @@ export type TickersServerMessage = {
 	//
 	type: ServerMessageType.TICKERS;
 	tickers: TickersServerMessage_Ticker[];
-	computed_tickers: TickersServerMessage_Ticker[];
+	tickers_computed: TickersServerMessage_Ticker[];
 };
 
 export type TickersServerMessage_Ticker = {
