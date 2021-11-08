@@ -283,6 +283,17 @@ export class App {
 	}
 
 	/**
+	 * Returns a application ticker instance
+	 *
+	 * @param exchange
+	 * @param pair
+	 * @returns
+	 */
+	find_ticker(exchange: CoinbinatorExchange, pair: Pair): CoinbinatorTicker | undefined {
+		return this.tickers?.get(exchange)?.get(pair);
+	}
+
+	/**
 	 * Returns a application ticker instance or creates a new one
 	 *
 	 * @param exchange
@@ -343,41 +354,35 @@ export class App {
 				.map((sub) => {
 					const { pair } = split_ticker_channel(sub);
 
-					console.log(pair, sub, this.tickers_computed.get(pair)?.channel);
-
-					// console.log("+++");
-					// console.log(pair);
-					// console.log(this.tickers_computed.get(pair));
+					if (!this.tickers_computed.get(pair)) {
+						console.log(this.tickers_computed.get(pair), pair);
+					}
 
 					return this.tickers_computed.get(pair)!;
 				})
-				// .filter((ticker) => !!ticker)
+				.filter((ticker) => !!ticker)
 				.toArray();
 
-			console.log(tickers.length + missing_tickers.length);
-
-			// console.log(this.tickers_computed.values());
-
-			// console.log(missing_tickers, client_subscriptions);
+			console.log(client_subscriptions.size, tickers.length + missing_tickers.length);
 
 			// NOTE: not subscribed to any dirty ticker
-			// console.log(client_subscriptions, this.tickers_dirty.values());
 
 			if (tickers.length === 0 && missing_tickers.length === 0) {
 				console.log("not tickers to send");
-
 				return;
 			}
 
 			console.log("sending tickers");
-
-			this.socket_send_message(socket, tickers_server_message_resource.transform([...tickers]));
+			this.socket_send_message(socket, tickers_server_message_resource.transform([...tickers, ...missing_tickers]));
 		});
 
 		this.tickers_dirty.clear();
 	}
 
 	update_cumputed_tickers() {
+		// this.update_cumputed_tickers__compute_ticker("BRL", "USD");
+		// return;
+
 		//NOTE: we will grant all granted quote combinations
 		for (const granted_base of this.granted_ticker_quotes) {
 			for (const granted_quote of this.granted_ticker_quotes) {
@@ -418,10 +423,6 @@ export class App {
 	update_cumputed_tickers__compute_ticker(base: string, quote: string) {
 		const path = this.find_ticker_hops([], base, quote);
 
-		if (base === "BRL") {
-			console.log(base, quote, base === quote, path);
-		}
-
 		if (typeof path === "undefined") {
 			// console.warn(format('unable to find path from "%s" to "%s"', base, quote));
 			return;
@@ -429,10 +430,22 @@ export class App {
 
 		const pair = Pairs.get(base, quote, true);
 
-		const computed_price = path.reduce((price, pair) => {
-			const ticker = this.find_or_create_ticker(CoinbinatorExchange.GENERIC, pair);
-			return price * parseFloat(ticker.price);
-		}, 1);
+		const computed_price = wu(path)
+			.map((pair) => {
+				const ticker_a = this.find_ticker(CoinbinatorExchange.GENERIC, pair);
+				if (typeof ticker_a !== "undefined") return ticker_a.price;
+
+				const ticker_b = this.find_ticker(CoinbinatorExchange.GENERIC, Pairs.get(pair.quote, pair.base, true));
+				if (typeof ticker_b !== "undefined") return (1 / parseFloat(ticker_b.price)).toString();
+
+				return "1";
+			})
+			.reduce((a, b) => a * parseFloat(b), 1);
+
+		// const computed_price = path.reduce((price, pair) => {
+		// 	const ticker = this.find_or_create_ticker(CoinbinatorExchange.GENERIC, pair);
+		// 	return price * parseFloat(ticker.price);
+		// }, 1);
 
 		if (!this.tickers_computed.has(pair)) {
 			this.tickers_computed.set(pair, new CoinbinatorTicker(CoinbinatorExchange.GENERIC, pair));
@@ -445,8 +458,6 @@ export class App {
 		if (typeof idn === "undefined") idn = `${from_symbol}/${to_symbol}`;
 
 		if (is_coin_alias(from_symbol, to_symbol)) return void 0;
-
-		// if (idn === "BRL/USD") console.log(path, from_symbol, to_symbol);
 
 		const tickers = this.tickers.get(CoinbinatorExchange.GENERIC) || [];
 
@@ -461,28 +472,37 @@ export class App {
 			}
 		}
 
-		let best: Pair[] | undefined;
+		let best_path: Pair[] | undefined;
+		let best_path_changed = false;
 
 		for (const [pair] of tickers) {
-			if (path.findIndex((p) => p.idn === pair.idn) > -1) continue;
+			if (path.findIndex((pair_in_path) => pair_in_path.idn === pair.idn) > -1) continue;
 
 			if (from_symbol === pair.base) {
 				const test = this.find_ticker_hops([...path, pair], pair.quote, to_symbol, idn);
 
-				if (typeof test !== "undefined" && (typeof best === "undefined" || test.length < best.length)) {
-					best = test;
+				if (typeof test !== "undefined" && (typeof best_path === "undefined" || test.length < best_path.length)) {
+					best_path = test;
+					best_path_changed = true;
 				}
 			}
 
 			if (from_symbol === pair.quote) {
-				const test = this.find_ticker_hops([...path, pair], pair.base, to_symbol, idn);
+				const test = this.find_ticker_hops([...path, Pairs.get(pair.quote, pair.base, true)], pair.base, to_symbol, idn);
 
-				if (typeof test !== "undefined" && (typeof best === "undefined" || test.length < best.length)) {
-					best = test;
+				if (typeof test !== "undefined" && (typeof best_path === "undefined" || test.length < best_path.length)) {
+					best_path = test;
+					best_path_changed = true;
 				}
+			}
+
+			// NOTE: stop search if we found a optinal (2 or less hops) path
+			if (best_path_changed && best_path) {
+				if (best_path.length <= 2) return best_path;
+				best_path_changed = false;
 			}
 		}
 
-		return best;
+		return best_path;
 	}
 }
