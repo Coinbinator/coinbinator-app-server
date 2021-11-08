@@ -1,6 +1,6 @@
-import CoinbinatorTicker from "@app/metas/ticker";
-import { TickersServerMessage, ServerMessageType, TickersServerMessage_Ticker } from "@app/utils/server_socket_messages";
 import wu from "wu";
+import CoinbinatorTicker from "../metas/ticker";
+import { ServerMessageType, TickersServerMessage, TickersServerMessage_Ticker } from "../utils/server_socket_messages";
 import TransformerAbstract from "./core/transformer_abstract";
 
 export type TickersServerMessageTransformerData = {

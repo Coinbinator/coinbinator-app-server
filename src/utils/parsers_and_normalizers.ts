@@ -1,10 +1,10 @@
-import { Data as WsData } from "ws";
-import { format as sprintf } from "util";
-import Pair from "@app/metas/pair";
-import Pairs from "@app/metas/pairs";
-import { ClientMessage } from "./client_socket_messages";
-import { InvalidSymbolString, InvalidPairString, InvalidExchangeString } from "./errors";
 import { CoinbinatorExchange } from "./types";
+import { Data as WsData } from "ws";
+import { ClientMessage } from "./client_socket_messages";
+import { InvalidExchangeString, InvalidPairString, InvalidSymbolString } from "./errors";
+import { format as sprintf } from "util";
+import { Pair } from "../metas/pair";
+import Pairs from "../metas/pairs";
 
 export function norm_symbol(symbol: string | undefined): string {
 	return symbol?.toLocaleUpperCase()?.trim() || "";
@@ -27,6 +27,8 @@ export function is_ticker_channel(ticker: string): boolean {
 
 export function split_ticker_channel(channel: string) {
 	let { base, quote, exchange } = /^(TICKER\:)?(?<base>[^@]*)[\/\_](?<quote>[^@]*)(\@(?<exchange>[^\@]+))?$/gi.exec(channel?.toLocaleUpperCase() || "")?.groups || {};
+
+	
 
 	return {
 		base,

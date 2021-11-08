@@ -1,5 +1,5 @@
-import { CoinbinatorExchange } from "@app/utils/types";
-import Pair from "./pair";
+import { CoinbinatorExchange } from "../utils/types";
+import { Pair } from "./pair";
 
 export default class CoinbinatorTicker {
 	readonly id: string;

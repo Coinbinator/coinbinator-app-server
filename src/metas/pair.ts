@@ -1,6 +1,6 @@
-import { assert_valid_symbol_string } from "@app/utils/parsers_and_normalizers";
+import { assert_valid_symbol_string } from "../utils/parsers_and_normalizers";
 
-export default class Pair {
+export class Pair {
 	readonly key!: string;
 	readonly idn: string;
 	readonly base!: string;

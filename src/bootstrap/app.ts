@@ -1,18 +1,18 @@
+import { CoinbinatorDecoratedWebSocket, CoinbinatorExchange, CoinbinatorTickerUpdate } from "../utils/types";
 import { Data as WsData } from "ws";
-import Pair from "@app/metas/pair";
+import { ExchangeBinanceRepository } from "../repositories/exchange_binance_repository";
+import { ExchangeMercadoBitcoinRepository } from "../repositories/exchange_mercadobitcoin_repository";
+import { is_coin_alias, loop, mapset_put_if_missing, uuid, value } from "../utils/helpers";
+import { MySubscriptionsClientMessage, SocketClientMessageType, SubscribeToTickerClientMessage, SubscribeToTickersClientMessage, UnsubscribeToTickerClientMessage } from "../utils/client_socket_messages";
+import { norm_client_socket_messages, norm_ticker_channel, split_ticker_channel } from "../utils/parsers_and_normalizers";
+import { Pair } from "../metas/pair";
 import { Request } from "express";
+import { ServerMessage, ServerMessageType, SubscriptionsServerMessage } from "../utils/server_socket_messages";
 import assert from "assert";
+import WebserverRepository from "../repositories/webserver_repository";
 import wu from "wu";
-import { CoinbinatorDecoratedWebSocket, CoinbinatorExchange, CoinbinatorTickerUpdate } from "@app/utils/types";
-import Pairs from "@app/metas/pairs";
-import CoinbinatorTicker from "@app/metas/ticker";
-import { ExchangeBinanceRepository } from "@app/repositories/exchange_binance_repository";
-import { ExchangeMercadoBitcoinRepository } from "@app/repositories/exchange_mercadobitcoin_repository";
-import WebserverRepository from "@app/repositories/webserver_repository";
-import { SocketClientMessageType, MySubscriptionsClientMessage, SubscribeToTickerClientMessage, SubscribeToTickersClientMessage, UnsubscribeToTickerClientMessage } from "@app/utils/client_socket_messages";
-import { loop, uuid, value, mapset_put_if_missing, is_coin_alias } from "@app/utils/helpers";
-import { norm_client_socket_messages, norm_ticker_channel, split_ticker_channel } from "@app/utils/parsers_and_normalizers";
-import { ServerMessageType, SubscriptionsServerMessage, ServerMessage } from "@app/utils/server_socket_messages";
+import Pairs from "../metas/pairs";
+import CoinbinatorTicker from "../metas/ticker";
 import { tickers_server_message_resource } from "./transformers";
 
 export class App {
@@ -96,7 +96,7 @@ export class App {
 		this.exchange_binance.init();
 		this.exchange_mercadobitcoin.init();
 
-		this.update_cumputed_tickers();
+		this.update_cumputed_tickers.bind(this);
 
 		loop(2000, this.update_cumputed_tickers.bind(this));
 		loop(5000, this.flush_dirty_tickers.bind(this));
@@ -156,9 +156,6 @@ export class App {
 				this.handle_client_message__unsubscribe_to_ticker(socket, normalized_message as UnsubscribeToTickerClientMessage);
 				return;
 			}
-
-			console.log("Unhandled message:");
-			console.log(normalized_message);
 		}
 	}
 	/**
@@ -192,13 +189,13 @@ export class App {
 	 * @param message
 	 */
 	handle_client_message__subscribe_to_tickers(socket: CoinbinatorDecoratedWebSocket, message: SubscribeToTickersClientMessage) {
-		// console.log("---");
-		// console.log(message);
+		console.log("---");
+		console.log(message);
 
 		for (const t of message.tickers) {
 			const ticker = norm_ticker_channel(t);
 
-			// console.log(ticker);
+			console.log(ticker);
 
 			if (typeof ticker === "undefined") continue;
 
@@ -210,9 +207,6 @@ export class App {
 		const tickets = wu(this.tickers_all)
 			.filter((ticker) => subscriptions?.has(ticker.id) === true)
 			.toArray();
-
-		console.log("Client updated subs:");
-		console.log(subscriptions);
 
 		if (tickets.length === 0) return;
 
@@ -374,8 +368,6 @@ export class App {
 				.filter((ticker) => !!ticker)
 				.toArray();
 
-			console.log("sending", tickers.length, missing_tickers.length);
-
 			//NOTE: no tickers to send
 			if (tickers.length === 0 && missing_tickers.length === 0) {
 				return;
@@ -481,10 +473,6 @@ export class App {
 	find_ticker_hops(path: Pair[], from_symbol: string, to_symbol: string, idn: string | undefined = void 0): Pair[] | undefined {
 		if (typeof idn === "undefined") idn = `${from_symbol}/${to_symbol}`;
 
-		// NOTE: max depth search reached
-		if (path.length > 3) return void 0;
-
-		// NOTE: ignroes if "from symbol" is similar to "to symbol"
 		if (is_coin_alias(from_symbol, to_symbol)) return void 0;
 
 		const tickers = this.tickers.get(CoinbinatorExchange.GENERIC) || [];

@@ -1,5 +1,5 @@
-import { App } from "@app/bootstrap/app";
 import { v4 as uuidv4 } from "uuid";
+import { App } from "../bootstrap/app";
 
 let __app: App;
 const __singletons: Map<any, any> = new Map();
