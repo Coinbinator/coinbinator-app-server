@@ -427,12 +427,12 @@ export class App {
 	 * @param quote
 	 */
 	update_cumputed_tickers__compute_ticker(base: string, quote: string) {
-		const path = this.find_ticker_hops([], base, quote);
-
 		// NOTE: skips computation of 'equal and similar' symbols (eg.: USD ==> USDT )
 		if (is_coin_alias(base, quote)) {
 			return;
 		}
+
+		const path = this.find_ticker_hops([], base, quote);
 
 		if (typeof path === "undefined") {
 			// console.warn(format('unable to find path from "%s" to "%s"', base, quote));
@@ -443,20 +443,16 @@ export class App {
 
 		const computed_price = wu(path)
 			.map((pair) => {
-				const ticker_a = this.find_ticker(CoinbinatorExchange.GENERIC, pair);
-				if (typeof ticker_a !== "undefined") return ticker_a.price;
+				const ticker_normal = this.find_ticker(CoinbinatorExchange.GENERIC, pair);
+				if (typeof ticker_normal !== "undefined") return ticker_normal.price;
 
-				const ticker_b = this.find_ticker(CoinbinatorExchange.GENERIC, Pairs.get(pair.quote, pair.base, true));
-				if (typeof ticker_b !== "undefined") return (1 / parseFloat(ticker_b.price)).toString();
+				const ticker_inverted = this.find_ticker(CoinbinatorExchange.GENERIC, Pairs.get(pair.quote, pair.base, true));
+				if (typeof ticker_inverted !== "undefined") return (1 / parseFloat(ticker_inverted.price)).toString();
 
+				// NOTE: not found ticker using 1
 				return "1";
 			})
 			.reduce((a, b) => a * parseFloat(b), 1);
-
-		// const computed_price = path.reduce((price, pair) => {
-		// 	const ticker = this.find_or_create_ticker(CoinbinatorExchange.GENERIC, pair);
-		// 	return price * parseFloat(ticker.price);
-		// }, 1);
 
 		if (!this.tickers_computed.has(pair)) {
 			this.tickers_computed.set(pair, new CoinbinatorTicker(CoinbinatorExchange.GENERIC, pair));
@@ -466,7 +462,7 @@ export class App {
 	}
 
 	/**
-	 * lookup for path between two tickers, to calculate arbritage of missing pairs
+	 * Lookup for path between two tickers, to calculate arbritage of missing pairs
 	 *
 	 * @param path
 	 * @param from_symbol
