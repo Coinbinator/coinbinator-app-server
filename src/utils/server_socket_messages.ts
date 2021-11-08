@@ -1,8 +1,8 @@
 import { CoinbinatorExchange } from "./types";
 
 export enum ServerMessageType {
-	SUBSCRIPTIONS = "Subscriptions",
-	TICKERS = "Tickers",
+	SUBSCRIPTIONS = "subscriptions",
+	TICKERS = "tickers",
 }
 export type ServerMessage = SubscriptionsServerMessage | TickersServerMessage;
 
