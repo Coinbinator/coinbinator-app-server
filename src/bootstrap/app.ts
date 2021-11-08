@@ -5,7 +5,6 @@ import { ExchangeMercadoBitcoinRepository } from "../repositories/exchange_merca
 import { is_coin_alias, loop, mapset_put_if_missing, uuid, value } from "../utils/helpers";
 import { MySubscriptionsClientMessage, SocketClientMessageType, SubscribeToTickerClientMessage, SubscribeToTickersClientMessage, UnsubscribeToTickerClientMessage } from "../utils/client_socket_messages";
 import { norm_client_socket_messages, norm_ticker_channel, split_ticker_channel } from "../utils/parsers_and_normalizers";
-import { Pair } from "../metas/pair";
 import { Request } from "express";
 import { ServerMessage, ServerMessageType, SubscriptionsServerMessage } from "../utils/server_socket_messages";
 import assert from "assert";
@@ -14,6 +13,7 @@ import wu from "wu";
 import Pairs from "../metas/pairs";
 import CoinbinatorTicker from "../metas/ticker";
 import { tickers_server_message_resource } from "./transformers";
+import Pair from "../metas/pair";
 
 export class App {
 	/**
@@ -106,6 +106,7 @@ export class App {
 
 	/**
 	 * Handles new socket client connection
+	 * 
 	 * @param socket
 	 */
 	on_client_socket_connect(socket: CoinbinatorDecoratedWebSocket, request: Request) {
@@ -471,8 +472,13 @@ export class App {
 	 * @returns
 	 */
 	find_ticker_hops(path: Pair[], from_symbol: string, to_symbol: string, idn: string | undefined = void 0): Pair[] | undefined {
+
 		if (typeof idn === "undefined") idn = `${from_symbol}/${to_symbol}`;
 
+		// NOTE: reached maximum depth of search
+		if( path.length > 3) return;
+
+		// NOTE: ignores similar symbols
 		if (is_coin_alias(from_symbol, to_symbol)) return void 0;
 
 		const tickers = this.tickers.get(CoinbinatorExchange.GENERIC) || [];

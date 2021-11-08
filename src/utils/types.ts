@@ -1,5 +1,6 @@
+
 import * as WebSocket from "ws";
-import { Pair } from "../metas/pair";
+import Pair from "../metas/pair";
 
 export enum CoinbinatorExchange {
 	GENERIC = "GENERIC",

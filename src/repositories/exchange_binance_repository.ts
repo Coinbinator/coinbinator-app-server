@@ -2,7 +2,7 @@ import assert from "assert";
 import Binance from "node-binance-api";
 import { type } from "os";
 import { Event as WsEvent, MessageEvent as WsMessageEvent, WebSocket } from "ws";
-import { Pair } from "../metas/pair";
+import Pair from "../metas/pair";
 import Pairs from "../metas/pairs";
 import { app, is_coin_usd_alias, loop, value } from "../utils/helpers";
 import { assert_valid_pair, assert_valid_pair_string, norm_ticker_channel, split_pair } from "../utils/parsers_and_normalizers";

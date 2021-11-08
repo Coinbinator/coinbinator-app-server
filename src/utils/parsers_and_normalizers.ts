@@ -3,7 +3,7 @@ import { Data as WsData } from "ws";
 import { ClientMessage } from "./client_socket_messages";
 import { InvalidExchangeString, InvalidPairString, InvalidSymbolString } from "./errors";
 import { format as sprintf } from "util";
-import { Pair } from "../metas/pair";
+import Pair from "../metas/pair";
 import Pairs from "../metas/pairs";
 
 export function norm_symbol(symbol: string | undefined): string {
